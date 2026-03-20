@@ -1,0 +1,58 @@
+[package]
+name = "leptos-cf"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Single-crate Leptos starter for Cloudflare Workers with D1."
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+axum = { version = "0.8", default-features = false, optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
+getrandom = { version = "0.4", features = ["wasm_js"] }
+getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+leptos = { version = "0.8" }
+leptos_axum = { version = "0.8.8", default-features = false, features = ["wasm"], optional = true }
+leptos_meta = { version = "0.8" }
+leptos_router = { version = "0.8" }
+send_wrapper = "0.6"
+serde = { version = "1", features = ["derive"] }
+tower-service = "0.3"
+wasm-bindgen = "0.2.105"
+worker = { version = "0.7.5", features = ["http", "axum", "d1"], optional = true }
+
+[features]
+hydrate = [
+  "dep:console_error_panic_hook",
+  "leptos/hydrate",
+]
+ssr = [
+  "dep:axum",
+  "dep:leptos_axum",
+  "dep:worker",
+  "leptos/ssr",
+  "leptos_meta/ssr",
+  "leptos_router/ssr",
+]
+
+[package.metadata.leptos]
+output-name = "leptos-cf"
+site-root = "target/site"
+site-pkg-dir = "pkg"
+style-file = "style/main.css"
+assets-dir = "assets"
+site-addr = "127.0.0.1:57581"
+reload-port = 57582
+browserquery = "defaults"
+bin-features = ["ssr"]
+bin-default-features = false
+lib-features = ["hydrate"]
+lib-default-features = false

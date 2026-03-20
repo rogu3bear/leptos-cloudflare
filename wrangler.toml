@@ -1,0 +1,16 @@
+name = "leptos-cf"
+main = "build/index.js"
+compatibility_date = "2026-03-20"
+
+[build]
+command = "cargo leptos build --release && cargo install -q \"worker-build@^0.7\" && worker-build --release --features ssr"
+
+[assets]
+directory = "./target/site"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "leptos-cf-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+preview_database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
