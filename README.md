@@ -19,10 +19,21 @@ Install these before running the starter:
 rustup toolchain install stable
 rustup target add wasm32-unknown-unknown
 cargo install cargo-leptos --locked
-bun install -g wrangler
 ```
 
-If you prefer not to install Wrangler globally, run it through `bunx wrangler`.
+This template uses `bunx wrangler`, so a global Wrangler install is not required.
+
+## Bootstrap
+
+The template includes two repo-local setup scripts:
+
+```bash
+./scripts/check-deps.sh
+./scripts/bootstrap.sh
+```
+
+- `check-deps.sh` verifies the required CLI tools, the Rust wasm target, and the pinned `wasm-bindgen-cli` version that matches the verified build.
+- `bootstrap.sh` installs missing Rust-side dependencies where needed, uses `bunx wrangler` for the Cloudflare side, then reruns the checks and prints the next setup steps.
 
 ## Project Structure
 
@@ -31,6 +42,7 @@ If you prefer not to install Wrangler globally, run it through `bunx wrangler`.
 ├── .cargo/config.toml
 ├── Cargo.toml
 ├── README.md
+├── scripts/
 ├── assets/
 ├── migrations/
 ├── src/
@@ -55,6 +67,7 @@ Why a single crate:
 ### 1. Create your D1 database
 
 ```bash
+./scripts/check-deps.sh
 bunx wrangler d1 create leptos-cf-db
 ```
 
@@ -77,6 +90,7 @@ bunx wrangler d1 migrations apply leptos-cf-db --remote
 Build the client bundle and start the Worker locally:
 
 ```bash
+./scripts/bootstrap.sh
 cargo leptos build --release
 bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 ```
@@ -126,6 +140,7 @@ The initial migration creates this table:
 The starter is intended to satisfy these commands:
 
 ```bash
+./scripts/check-deps.sh
 cargo check --features ssr
 cargo leptos build --release
 bunx wrangler deploy --dry-run
