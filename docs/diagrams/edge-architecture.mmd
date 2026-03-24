@@ -1,0 +1,14 @@
+flowchart TB
+    Browser["Browser"]
+    Worker["CF Worker\n(Leptos SSR + Router)"]
+
+    Browser --> Worker
+
+    Worker --> D1["D1\n(SQL Database)"]
+    Worker --> R2["R2\n(Object Storage)"]
+    Worker --> KV["KV\n(Edge Cache)"]
+    Worker --> Assets["Assets\n(Static Files)"]
+    Worker --> Queues["Queues\n(Background Jobs)"]
+
+    Queues --> CW["Consumer Worker"]
+    CW --> D1

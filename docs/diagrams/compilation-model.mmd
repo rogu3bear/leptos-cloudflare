@@ -1,0 +1,27 @@
+flowchart TB
+    cargo["cargo-leptos build"]
+
+    subgraph shared["Shared Code"]
+        direction TB
+        comp["Components"]
+        types["Types"]
+        sigs["Server fn signatures"]
+    end
+
+    subgraph lib_branch["lib target (--features hydrate)"]
+        wb["wasm-bindgen"]
+        wasm_out["Browser WASM + JS glue\n(target/site/pkg/)"]
+    end
+
+    subgraph bin_branch["bin target (--features ssr)"]
+        worker_build["worker-build"]
+        worker_out["Worker WASM\n(build/index.js)"]
+    end
+
+    cargo --> lib_branch
+    cargo --> bin_branch
+    wb --> wasm_out
+    worker_build --> worker_out
+
+    shared --> lib_branch
+    shared --> bin_branch

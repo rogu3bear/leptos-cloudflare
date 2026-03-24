@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant Browser
+    participant CF as CF Edge
+    participant Worker
+    participant Axum as axum
+    participant SSR as Leptos SSR
+    participant D1
+
+    Note over Browser,D1: First Visit — Server-Side Render
+
+    Browser->>CF: GET /
+    CF->>Worker: Route request
+    Worker->>Axum: Forward request
+    Axum->>SSR: Render route
+    SSR->>D1: Fetch initial data
+    D1-->>SSR: Rows
+    SSR-->>Axum: Rendered HTML
+    Axum-->>Worker: Response
+    Worker-->>CF: Response
+    CF-->>Browser: HTML + asset links
+
+    Note over Browser: Paint (HTML visible)
+
+    Browser->>CF: GET /pkg/app.wasm
+    CF-->>Browser: WASM bundle
+    Browser->>Browser: hydrate() — app becomes interactive
+
+    Note over Browser,D1: Server Function Call
+
+    Browser->>Worker: HTTP POST /api/server-fn (JSON)
+    Worker->>D1: Query / mutation
+    D1-->>Worker: Result
+    Worker-->>Browser: JSON response

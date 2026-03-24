@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant Comp as Component
+    participant SA as ServerAction
+    participant Worker
+    participant SW as SendWrapper
+    participant D1
+
+    Comp->>SA: dispatch(CreateTodo { title })
+    SA->>Comp: Optimistic UI update
+
+    SA->>Worker: HTTP POST /api/create-todo
+    Worker->>SW: Route to server fn
+    SW->>SW: Wrap in SendWrapper (non-Send env)
+    SW->>D1: INSERT INTO todos ...
+    D1-->>SW: Ok(row_id)
+    SW-->>Worker: Ok(Todo)
+    Worker-->>SA: 200 JSON response
+
+    SA->>SA: version.update(|v| v + 1)
+    SA->>Comp: Resource refetches (invalidated by version)
+    Comp->>Comp: Re-render with confirmed data

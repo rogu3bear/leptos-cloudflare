@@ -1,0 +1,15 @@
+flowchart TB
+    Browser["Browser"]
+    Worker["CF Worker\n(Leptos SSR)"]
+
+    Browser --> Worker
+
+    Worker --> D1["D1\n(Edge SQL)"]
+    Worker --> DO["Durable Object\n(Container binding)"]
+    Worker --> Tunnel["Cloudflare Tunnel"]
+
+    DO --> Container["Container\n(Heavy Processing)"]
+
+    Tunnel --> PrivateInfra["Private Infrastructure"]
+    PrivateInfra --> ExistingDB["Existing Databases"]
+    PrivateInfra --> ExistingBackend["Existing Backend Services"]
