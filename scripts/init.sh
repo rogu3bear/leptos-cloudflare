@@ -57,7 +57,6 @@ sedi \
 
 log "Rewriting src/app.rs identity..."
 sedi \
-  -e "s|href=\"/pkg/leptos-cf.css\"|href=\"/pkg/$PROJECT.css\"|" \
   -e "s|text=\"Leptos CF Starter\"|text=\"$PROJECT\"|" \
   -e "s|content=\"A full-stack Leptos starter for Cloudflare Workers with D1-backed todos.\"|content=\"$PROJECT\"|" \
   "$ROOT_DIR/src/app.rs"
@@ -319,6 +318,6 @@ Next steps:
 2. Replace the placeholder database IDs in wrangler.toml
 3. Add a migrations/0001_init.sql for your schema
 4. bunx wrangler d1 migrations apply $PROJECT-db --local
-5. cargo leptos build --release
+5. bash ./scripts/build-edge.sh
 6. bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 EOF

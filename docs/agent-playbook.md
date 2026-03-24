@@ -98,10 +98,10 @@ Expected: `todos` appears in the result.
 ### 2.4 Build
 
 ```bash
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 ```
 
-This runs two compilations: the SSR binary (targeting `wasm32-unknown-unknown` via `worker-build`) and the WASM hydration bundle. Output lands in `target/site/`. Expect several minutes on first run due to dependency compilation.
+This runs the full edge build pipeline: `cargo-leptos` compiles the hydration bundle, `scripts/hash-assets.mjs` fingerprints the client JS/CSS/WASM and updates the SSR asset constants, and `worker-build` compiles the Worker bundle. Output lands in `target/site/` and `build/`. Expect several minutes on first run due to dependency compilation.
 
 Decision point: if the build fails with a `wasm-bindgen` version mismatch error, see section 7 (Troubleshooting).
 
@@ -163,7 +163,7 @@ Use this checklist. Work through it top to bottom; each item that applies requir
 | Apply migrations (remote) | `bunx wrangler d1 migrations apply leptos-cf-db --remote` |
 | Execute SQL (local) | `bunx wrangler d1 execute leptos-cf-db --local --command "..."` |
 | Execute SQL (remote) | `bunx wrangler d1 execute leptos-cf-db --remote --command "..."` |
-| Build (release) | `cargo leptos build --release` |
+| Build (release) | `bash ./scripts/build-edge.sh` |
 | Type-check SSR only | `cargo check --features ssr` |
 | Local dev server | `bunx wrangler dev --local --ip 127.0.0.1 --port 57581` |
 | Validate before deploy | `bunx wrangler deploy --dry-run` |
@@ -206,7 +206,7 @@ Run these three commands in order after any code change. Do not skip steps.
 cargo check --features ssr
 
 # Step 2: Full build (catches WASM compilation and linking errors)
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 
 # Step 3: Validate the deployment artifact
 bunx wrangler deploy --dry-run

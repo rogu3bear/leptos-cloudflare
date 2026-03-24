@@ -70,6 +70,6 @@ Next steps:
 1. bunx wrangler d1 create leptos-cf-db
 2. Replace the placeholder database IDs in wrangler.toml
 3. bunx wrangler d1 migrations apply leptos-cf-db --local
-4. cargo leptos build --release
+4. bash ./scripts/build-edge.sh
 5. bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 EOF

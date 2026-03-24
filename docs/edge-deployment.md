@@ -518,7 +518,7 @@ main = "build/index.js"
 compatibility_date = "2026-03-20"
 
 [build]
-command = "cargo leptos build --release && cargo install -q \"worker-build@^0.7\" && worker-build --release --features ssr"
+command = "bash ./scripts/build-edge.sh"
 
 [assets]
 directory = "./target/site"

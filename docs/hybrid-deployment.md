@@ -313,7 +313,7 @@ External service (GitHub, Stripe, OAuth provider)
 
 ```bash
 # Start local dev server
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 
 # In a second terminal, expose it
