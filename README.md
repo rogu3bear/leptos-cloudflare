@@ -23,7 +23,7 @@ Cloudflare gives you the deployment surface: Workers for compute, D1 for SQL, As
 ## Quick Start (New Project)
 
 ```bash
-git clone https://github.com/user/leptos-cf.git my-app
+git clone https://github.com/rogu3bear/leptos-cloudflare.git my-app
 cd my-app
 ./scripts/init.sh my-app        # strips the todo example, rewrites config
 ./scripts/bootstrap.sh           # installs Rust toolchain + cargo-leptos
