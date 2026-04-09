@@ -27,11 +27,11 @@ After bootstrap, re-run `check-deps.sh` and confirm all checks pass.
 Verify Cloudflare credentials are set in the environment:
 
 ```bash
-echo $CLOUDFLARE_API_TOKEN
-echo $CLOUDFLARE_ACCOUNT_ID
+test -n "${CLOUDFLARE_API_TOKEN:-}"
+test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
 ```
 
-Both must be non-empty. If either is missing, set them before proceeding. Wrangler reads these automatically; do not hardcode them.
+Both commands must exit 0. If either fails, set the variable before proceeding. Wrangler reads these automatically; do not hardcode them.
 
 ---
 

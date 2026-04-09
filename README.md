@@ -272,9 +272,6 @@ Cache behavior is split cleanly:
 ```bash
 # Interactive (one at a time)
 bunx wrangler secret put SECRET_KEY
-
-# Bulk (from JSON, good for agent use)
-echo '{"SECRET_KEY":"value","OTHER_KEY":"value2"}' | bunx wrangler secret bulk
 ```
 
 ### Dry run
