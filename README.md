@@ -30,7 +30,7 @@ cd my-app
 bunx wrangler d1 create my-app-db
 # paste the database_id into wrangler.toml
 bunx wrangler d1 migrations apply my-app-db --local
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 ```
 
@@ -142,7 +142,7 @@ bunx wrangler d1 migrations apply leptos-cf-db --remote
 ### Build and run locally
 
 ```bash
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 ```
 
@@ -224,7 +224,7 @@ Set these before any `wrangler` command for non-interactive (agent) usage.
 ## Local Development
 
 ```bash
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 bunx wrangler dev --local --ip 127.0.0.1 --port 57581
 ```
 
@@ -251,21 +251,27 @@ bunx wrangler deploy
 Wrangler runs the configured build command:
 
 1. `cargo leptos build --release` -- compiles the client WASM + CSS
-2. `worker-build --release --features ssr` -- compiles the Worker bundle
+2. `bun ./scripts/hash-assets.mjs` -- fingerprints the client JS/CSS/WASM and updates the SSR asset constants
+3. `worker-build --release --features ssr` -- compiles the Worker bundle against those hashed asset names
 
 That produces:
 
 - Client assets in `target/site/`
+- Asset manifest in `target/site/asset-manifest.json`
+- Cloudflare cache header rules in `target/site/_headers`
 - Worker bundle in `build/index.js`
+
+Cache behavior is split cleanly:
+
+- Hashed `/pkg/*` assets ship with `Cache-Control: public, max-age=31536000, immutable`
+- Dynamic Worker responses (`/`, route HTML, server functions) ship with `Cache-Control: no-store`
+- `asset-manifest.json` is also `no-store`, so deploys never strand old asset pointers
 
 ### Setting secrets
 
 ```bash
 # Interactive (one at a time)
 bunx wrangler secret put SECRET_KEY
-
-# Bulk (from JSON, good for agent use)
-echo '{"SECRET_KEY":"value","OTHER_KEY":"value2"}' | bunx wrangler secret bulk
 ```
 
 ### Dry run
@@ -495,7 +501,7 @@ CREATE TABLE IF NOT EXISTS todos (
 ```bash
 ./scripts/check-deps.sh                                    # toolchain
 cargo check --features ssr                                 # server compilation
-cargo leptos build --release                               # full client + server build
+bash ./scripts/build-edge.sh                               # full edge build with hashed assets
 bunx wrangler deploy --dry-run                             # deployment structure
 bunx wrangler dev --local --ip 127.0.0.1 --port 57581     # local smoke test
 ```

@@ -52,7 +52,6 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     view! {
-        <Stylesheet id="leptos" href="/pkg/leptos-cf.css"/>
         <Title text="Leptos CF Starter"/>
 
         <Router>
@@ -640,10 +639,10 @@ Run this first. It catches the majority of errors — missing imports, wrong typ
 ### Full build
 
 ```bash
-cargo leptos build --release
+bash ./scripts/build-edge.sh
 ```
 
-This compiles both the WASM client bundle and the Worker binary. Required before deploying or running integration tests. Slow; use `cargo check --features ssr` during development.
+This compiles both the WASM client bundle and the Worker binary, fingerprints the browser assets, and verifies the cache headers/manifest output. Required before deploying or running integration tests. Slow; use `cargo check --features ssr` during development.
 
 ### Dry-run deploy
 

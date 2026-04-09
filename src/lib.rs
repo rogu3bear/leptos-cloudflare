@@ -1,5 +1,6 @@
 mod api;
 mod app;
+mod asset_hashes;
 mod components;
 #[cfg(feature = "ssr")]
 mod server;
@@ -12,6 +13,7 @@ async fn fetch(
     _ctx: worker::Context,
 ) -> worker::Result<axum::http::Response<axum::body::Body>> {
     use axum::Router;
+    use axum::http::header::{CACHE_CONTROL, HeaderValue, REFERRER_POLICY, X_CONTENT_TYPE_OPTIONS};
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use tower_service::Service;
@@ -29,7 +31,19 @@ async fn fetch(
         })
         .with_state(state);
 
-    Ok(router.call(req).await?)
+    let mut response = router.call(req).await?;
+    let headers = response.headers_mut();
+    headers.insert(CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    headers.insert(
+        X_CONTENT_TYPE_OPTIONS,
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        REFERRER_POLICY,
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+
+    Ok(response)
 }
 
 #[cfg(feature = "hydrate")]

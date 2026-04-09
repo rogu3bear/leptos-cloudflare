@@ -1,6 +1,6 @@
 [package]
 name = "leptos-cf"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 description = "Single-crate Leptos starter for Cloudflare Workers with D1."
