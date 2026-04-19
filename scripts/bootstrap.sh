@@ -2,7 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
 EXPECTED_WASM_BINDGEN_VERSION="0.2.114"
+EXPECTED_WORKER_BUILD_VERSION="0.7.5"
+EXPECTED_WRANGLER_VERSION="4.83.0"
 
 log() {
   printf '[bootstrap] %s\n' "$1"
@@ -22,6 +25,10 @@ require_command rustup "Rustup is required. Install it from https://rustup.rs/."
 require_command cargo "Cargo is required. Install Rust from https://rustup.rs/."
 require_command bun "Bun is required. Install it from https://bun.sh/."
 
+wrangler_cmd() {
+  bunx "wrangler@${EXPECTED_WRANGLER_VERSION}" "$@"
+}
+
 if rustup toolchain list | grep -q '^stable'; then
   log "Stable Rust toolchain already installed."
 else
@@ -37,10 +44,16 @@ else
 fi
 
 if cargo leptos --version >/dev/null 2>&1; then
-  log "cargo-leptos already installed."
+  current_cargo_leptos_version="$(cargo leptos --version | awk '{print $2}')"
 else
-  log "Installing cargo-leptos."
-  cargo install cargo-leptos --locked
+  current_cargo_leptos_version=""
+fi
+
+if [ "$current_cargo_leptos_version" = "$EXPECTED_CARGO_LEPTOS_VERSION" ]; then
+  log "cargo-leptos $EXPECTED_CARGO_LEPTOS_VERSION already installed."
+else
+  log "Installing cargo-leptos $EXPECTED_CARGO_LEPTOS_VERSION."
+  cargo install cargo-leptos --locked --version "$EXPECTED_CARGO_LEPTOS_VERSION"
 fi
 
 if command -v wasm-bindgen >/dev/null 2>&1; then
@@ -56,8 +69,21 @@ else
   cargo install -f wasm-bindgen-cli --version "$EXPECTED_WASM_BINDGEN_VERSION"
 fi
 
-log "Checking Wrangler through bunx."
-bunx wrangler --version >/dev/null
+if command -v worker-build >/dev/null 2>&1; then
+  current_worker_build_version="$(worker-build --version | awk '{print $1}')"
+else
+  current_worker_build_version=""
+fi
+
+if [ "$current_worker_build_version" = "$EXPECTED_WORKER_BUILD_VERSION" ]; then
+  log "worker-build $EXPECTED_WORKER_BUILD_VERSION already installed."
+else
+  log "Installing worker-build $EXPECTED_WORKER_BUILD_VERSION."
+  cargo install worker-build --locked --version "$EXPECTED_WORKER_BUILD_VERSION"
+fi
+
+log "Checking Wrangler $EXPECTED_WRANGLER_VERSION through bunx."
+wrangler_cmd --version >/dev/null
 
 log "Running dependency checks."
 "$ROOT_DIR/scripts/check-deps.sh"
@@ -67,9 +93,9 @@ cat <<'EOF'
 Bootstrap complete.
 
 Next steps:
-1. bunx wrangler d1 create leptos-cf-db
+1. bunx wrangler@4.83.0 d1 create leptos-cf-db
 2. Replace the placeholder database IDs in wrangler.toml
-3. bunx wrangler d1 migrations apply leptos-cf-db --local
+3. bunx wrangler@4.83.0 d1 migrations apply leptos-cf-db --local
 4. bash ./scripts/build-edge.sh
-5. bunx wrangler dev --local --ip 127.0.0.1 --port 57581
+5. bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581
 EOF

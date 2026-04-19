@@ -2,7 +2,7 @@
 
 A full-stack [Leptos 0.8](https://leptos.dev/) starter deployed to Cloudflare Workers. SSR on the edge, hydration in the browser, D1 for persistence, and an agent-first setup workflow that lets your AI coding assistant provision the entire Cloudflare stack for you.
 
-The included example is a D1-backed todo app with list, create, toggle, and delete flows implemented entirely through Leptos server functions.
+The included example is a D1-backed todo app with list, create, toggle, and delete flows implemented entirely through Leptos server functions. The default demo keeps todos isolated to each browser session and only renders the newest slice so the starter stays bounded under public traffic.
 
 ## Why This Stack
 
@@ -27,11 +27,11 @@ git clone https://github.com/rogu3bear/leptos-cloudflare.git my-app
 cd my-app
 ./scripts/init.sh my-app        # strips the todo example, rewrites config
 ./scripts/bootstrap.sh           # installs Rust toolchain + cargo-leptos
-bunx wrangler d1 create my-app-db
+bunx wrangler@4.83.0 d1 create my-app-db
 # paste the database_id into wrangler.toml
-bunx wrangler d1 migrations apply my-app-db --local
+bunx wrangler@4.83.0 d1 migrations apply my-app-db --local
 bash ./scripts/build-edge.sh
-bunx wrangler dev --local --ip 127.0.0.1 --port 57581
+bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581
 ```
 
 `init.sh` removes the todo domain (components, server functions, migration, styles) and leaves a clean "It works." skeleton with all the wiring intact. See [De-templating](#de-templating) for details.
@@ -81,16 +81,16 @@ The agent will execute something like:
 ./scripts/bootstrap.sh
 
 # 2. Create the D1 database
-bunx wrangler d1 create leptos-cf-db
+bunx wrangler@4.83.0 d1 create leptos-cf-db
 
 # 3. Parse the database_id from the output and patch wrangler.toml
 
 # 4. Apply migrations
-bunx wrangler d1 migrations apply leptos-cf-db --local
-bunx wrangler d1 migrations apply leptos-cf-db --remote
+bunx wrangler@4.83.0 d1 migrations apply leptos-cf-db --local
+bunx wrangler@4.83.0 d1 migrations apply leptos-cf-db --remote
 
 # 5. Build and deploy
-bunx wrangler deploy
+bunx wrangler@4.83.0 deploy
 ```
 
 The placeholder `00000000-0000-0000-0000-000000000000` IDs in `wrangler.toml` are the signal -- the agent knows to replace them.
@@ -108,11 +108,12 @@ Cloudflare's infrastructure is fully API-driven. Every dashboard action has a CL
 ```bash
 rustup toolchain install stable
 rustup target add wasm32-unknown-unknown
-cargo install cargo-leptos --locked
+cargo install cargo-leptos --locked --version 0.3.5
+cargo install worker-build --locked --version 0.7.5
 cargo install -f wasm-bindgen-cli --version 0.2.114
 ```
 
-This template uses `bunx wrangler`, so a global Wrangler install is not required. You do need [Bun](https://bun.sh/).
+This template uses `bunx wrangler@4.83.0`, so a global Wrangler install is not required. You do need [Bun](https://bun.sh/).
 
 ### Bootstrap scripts
 
@@ -124,7 +125,7 @@ This template uses `bunx wrangler`, so a global Wrangler install is not required
 ### Create your D1 database
 
 ```bash
-bunx wrangler d1 create leptos-cf-db
+bunx wrangler@4.83.0 d1 create leptos-cf-db
 ```
 
 Wrangler prints a `database_id`. Copy it into both `database_id` and `preview_database_id` in `wrangler.toml`.
@@ -133,23 +134,23 @@ Wrangler prints a `database_id`. Copy it into both `database_id` and `preview_da
 
 ```bash
 # Local (for wrangler dev)
-bunx wrangler d1 migrations apply leptos-cf-db --local
+bunx wrangler@4.83.0 d1 migrations apply leptos-cf-db --local
 
 # Remote (for production)
-bunx wrangler d1 migrations apply leptos-cf-db --remote
+bunx wrangler@4.83.0 d1 migrations apply leptos-cf-db --remote
 ```
 
 ### Build and run locally
 
 ```bash
 bash ./scripts/build-edge.sh
-bunx wrangler dev --local --ip 127.0.0.1 --port 57581
+bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581
 ```
 
 ### Deploy
 
 ```bash
-bunx wrangler deploy
+bunx wrangler@4.83.0 deploy
 ```
 
 ---
@@ -225,10 +226,11 @@ Set these before any `wrangler` command for non-interactive (agent) usage.
 
 ```bash
 bash ./scripts/build-edge.sh
-bunx wrangler dev --local --ip 127.0.0.1 --port 57581
+bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581
 ```
 
 Wrangler serves the Worker and the asset bundle from `target/site`. The todo UI talks to D1 only through Leptos server functions.
+Each browser session gets its own cookie-scoped todo queue, and the starter only renders the newest 100 rows from that queue so the public demo stays responsive.
 
 **Local secrets**: Create a `.dev.vars` file (gitignored) for local environment variables:
 
@@ -245,7 +247,7 @@ SECRET_KEY=dev-value-here
 Once `wrangler.toml` has a real D1 database ID and the remote migration has been applied:
 
 ```bash
-bunx wrangler deploy
+bunx wrangler@4.83.0 deploy
 ```
 
 Wrangler runs the configured build command:
@@ -271,13 +273,13 @@ Cache behavior is split cleanly:
 
 ```bash
 # Interactive (one at a time)
-bunx wrangler secret put SECRET_KEY
+bunx wrangler@4.83.0 secret put SECRET_KEY
 ```
 
 ### Dry run
 
 ```bash
-bunx wrangler deploy --dry-run
+bunx wrangler@4.83.0 deploy --dry-run
 ```
 
 ---
@@ -502,8 +504,8 @@ CREATE TABLE IF NOT EXISTS todos (
 ./scripts/check-deps.sh                                    # toolchain
 cargo check --features ssr                                 # server compilation
 bash ./scripts/build-edge.sh                               # full edge build with hashed assets
-bunx wrangler deploy --dry-run                             # deployment structure
-bunx wrangler dev --local --ip 127.0.0.1 --port 57581     # local smoke test
+bunx wrangler@4.83.0 deploy --dry-run                             # deployment structure
+bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581     # local smoke test
 ```
 
 ---
@@ -514,17 +516,17 @@ Commands you'll use most with this project:
 
 | Command | What it does |
 |---|---|
-| `bunx wrangler dev --local` | Start local dev server |
-| `bunx wrangler deploy` | Deploy to production |
-| `bunx wrangler deploy --dry-run` | Validate without deploying |
-| `bunx wrangler d1 create <name>` | Create a D1 database |
-| `bunx wrangler d1 migrations apply <db> --local` | Apply migrations locally |
-| `bunx wrangler d1 migrations apply <db> --remote` | Apply migrations to production |
-| `bunx wrangler d1 execute <db> --local --command "SQL"` | Run ad-hoc SQL locally |
-| `bunx wrangler d1 execute <db> --remote --command "SQL"` | Run ad-hoc SQL in production |
-| `bunx wrangler secret put <KEY>` | Set a secret (interactive) |
-| `bunx wrangler secret list` | List all secrets |
-| `bunx wrangler tail` | Stream live Worker logs |
+| `bunx wrangler@4.83.0 dev --local` | Start local dev server |
+| `bunx wrangler@4.83.0 deploy` | Deploy to production |
+| `bunx wrangler@4.83.0 deploy --dry-run` | Validate without deploying |
+| `bunx wrangler@4.83.0 d1 create <name>` | Create a D1 database |
+| `bunx wrangler@4.83.0 d1 migrations apply <db> --local` | Apply migrations locally |
+| `bunx wrangler@4.83.0 d1 migrations apply <db> --remote` | Apply migrations to production |
+| `bunx wrangler@4.83.0 d1 execute <db> --local --command "SQL"` | Run ad-hoc SQL locally |
+| `bunx wrangler@4.83.0 d1 execute <db> --remote --command "SQL"` | Run ad-hoc SQL in production |
+| `bunx wrangler@4.83.0 secret put <KEY>` | Set a secret (interactive) |
+| `bunx wrangler@4.83.0 secret list` | List all secrets |
+| `bunx wrangler@4.83.0 tail` | Stream live Worker logs |
 
 ---
 
