@@ -106,7 +106,7 @@ pub fn TodoPage() -> impl IntoView {
                             </button>
                         </div>
                         <p class="composer-hint">
-                            "Mutations go through Leptos server functions and write directly to D1."
+                            "This demo keeps todos isolated to the current browser session and writes them through Leptos server functions straight into D1."
                         </p>
                     </form>
                 </div>
@@ -158,7 +158,12 @@ fn TodoBoard(
     toggle_action: ServerAction<ToggleTodo>,
     delete_action: ServerAction<DeleteTodo>,
 ) -> impl IntoView {
-    let TodosResponse { items, stats } = data;
+    let TodosResponse {
+        items,
+        stats,
+        visible_limit,
+        is_truncated,
+    } = data;
     let has_items = !items.is_empty();
     let items = std::sync::Arc::new(items);
     let list_or_empty = if has_items {
@@ -213,12 +218,26 @@ fn TodoBoard(
             <div class="panel-head">
                 <div>
                     <h2>"Todo Flow"</h2>
-                    <p>"Server-rendered on first load, hydrated in the browser after that."</p>
+                    <p>
+                        "Server-rendered on first load, hydrated after that, and scoped to this browser session."
+                    </p>
                 </div>
                 <span class="pill">
-                    {if has_items { "Live D1 Data" } else { "Ready for your first task" }}
+                    {if has_items {
+                        "Session-Scoped D1 Data"
+                    } else {
+                        "Private Demo Queue"
+                    }}
                 </span>
             </div>
+
+            <Show when=move || is_truncated>
+                <p class="composer-hint">
+                    {format!(
+                        "Showing the newest {visible_limit} todos for this browser session so the starter stays fast under load."
+                    )}
+                </p>
+            </Show>
 
             {list_or_empty}
         </section>

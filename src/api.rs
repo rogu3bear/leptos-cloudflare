@@ -20,6 +20,8 @@ pub struct TodoStats {
 pub struct TodosResponse {
     pub items: Vec<TodoItem>,
     pub stats: TodoStats,
+    pub visible_limit: usize,
+    pub is_truncated: bool,
 }
 
 #[server(ListTodos)]

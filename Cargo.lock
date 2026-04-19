@@ -920,6 +920,7 @@ name = "leptos-cf"
 version = "0.1.2"
 dependencies = [
  "axum",
+ "base64",
  "console_error_panic_hook",
  "getrandom 0.3.4",
  "getrandom 0.4.2",
@@ -929,6 +930,7 @@ dependencies = [
  "leptos_router",
  "send_wrapper",
  "serde",
+ "sha2",
  "tower-service",
  "wasm-bindgen",
  "worker",
