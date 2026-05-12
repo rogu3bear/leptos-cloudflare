@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
-EXPECTED_WASM_BINDGEN_VERSION="0.2.114"
 EXPECTED_WORKER_BUILD_VERSION="0.7.5"
 EXPECTED_WRANGLER_VERSION="4.83.0"
 
@@ -56,18 +55,8 @@ else
   cargo install cargo-leptos --locked --version "$EXPECTED_CARGO_LEPTOS_VERSION"
 fi
 
-if command -v wasm-bindgen >/dev/null 2>&1; then
-  current_wasm_bindgen_version="$(wasm-bindgen --version | awk '{print $2}')"
-else
-  current_wasm_bindgen_version=""
-fi
-
-if [ "$current_wasm_bindgen_version" = "$EXPECTED_WASM_BINDGEN_VERSION" ]; then
-  log "wasm-bindgen-cli $EXPECTED_WASM_BINDGEN_VERSION already installed."
-else
-  log "Installing wasm-bindgen-cli $EXPECTED_WASM_BINDGEN_VERSION."
-  cargo install -f wasm-bindgen-cli --version "$EXPECTED_WASM_BINDGEN_VERSION"
-fi
+repo_wasm_bindgen_version="$("$ROOT_DIR/scripts/with-wasm-bindgen-cli.sh" --version | awk '{print $2}')"
+log "Ensured repo-local wasm-bindgen-cli $repo_wasm_bindgen_version from Cargo.lock."
 
 if command -v worker-build >/dev/null 2>&1; then
   current_worker_build_version="$(worker-build --version | awk '{print $1}')"

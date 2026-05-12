@@ -349,7 +349,7 @@ Start minimal and add complexity only when you hit a concrete limit.
 
 **Stage 1: Edge-only (this template)**
 
-Worker + D1 + Assets. Handles most CRUD applications. Scale: Workers are globally distributed, D1 has read replication.
+Worker + D1 + Assets. Handles most CRUD applications. Scale: Workers are globally distributed, and D1 read replication can be enabled for production databases that use the D1 Sessions API.
 
 ```
 Worker → D1

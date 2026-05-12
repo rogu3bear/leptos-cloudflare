@@ -149,6 +149,11 @@ fn hydration_script(options: &leptos::prelude::LeptosOptions) -> String {
 #[cfg(feature = "ssr")]
 fn asset_href(options: &leptos::prelude::LeptosOptions, extension: &str, hash: &str) -> String {
     let output_name = options.output_name.as_ref();
+    let output_name = if output_name.is_empty() {
+        env!("CARGO_PKG_NAME")
+    } else {
+        output_name
+    };
     let pkg_dir = options.site_pkg_dir.as_ref();
 
     if hash.is_empty() {

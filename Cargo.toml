@@ -28,7 +28,7 @@ send_wrapper = "0.6"
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
 tower-service = "0.3"
-wasm-bindgen = "0.2.105"
+wasm-bindgen = "0.2.121"
 worker = { version = "0.7.5", features = ["http", "axum", "d1"], optional = true }
 
 [features]

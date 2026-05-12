@@ -97,6 +97,10 @@ pub fn HomePage() -> impl IntoView {
     view! {
         <main class="page-shell">
             <section class="hero">
+                <div class="brand-lockup">
+                    <img class="brand-mark" src="/app-icon.svg" alt="Leptos CF Starter logo"/>
+                    <span>"Leptos CF Starter"</span>
+                </div>
                 <div class="hero-copy">
                     <h1>"It works."</h1>
                     <p class="hero-lede">
@@ -177,6 +181,26 @@ input {
 
 .hero {
   margin-bottom: 26px;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-family: "Avenir Next Condensed", "Franklin Gothic Medium", sans-serif;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(35, 28, 23, 0.18);
 }
 
 .eyebrow {

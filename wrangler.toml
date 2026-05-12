@@ -1,12 +1,13 @@
 name = "leptos-cf"
-main = "build/index.js"
-compatibility_date = "2026-03-20"
+main = "build/_worker.js"
+compatibility_date = "2026-04-22"
 
 [build]
 command = "bash ./scripts/build-edge.sh"
 
 [assets]
 directory = "./target/site"
+binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"

@@ -20,7 +20,7 @@ If it fails, run the bootstrap script:
 ./scripts/bootstrap.sh
 ```
 
-Bootstrap installs: stable Rust toolchain, `wasm32-unknown-unknown` target, `cargo-leptos`, `wasm-bindgen-cli` (pinned to `0.2.114`). It requires `rustup`, `cargo`, and `bun` to already be present. If those are missing, the script exits with an error message that names the missing tool.
+Bootstrap installs: stable Rust toolchain, `wasm32-unknown-unknown` target, `cargo-leptos`, `worker-build`, and the repo-local `wasm-bindgen-cli` resolved from `Cargo.lock`. It requires `rustup`, `cargo`, and `bun` to already be present. If those are missing, the script exits with an error message that names the missing tool.
 
 After bootstrap, re-run `check-deps.sh` and confirm all checks pass.
 
@@ -220,21 +220,34 @@ For changes that only touch `src/components/` or `style/main.css`, step 1 is suf
 
 ## 7. Troubleshooting
 
+## Realtime/WebSocket Rule
+
+WebSocket traffic enters above Leptos. Do not add realtime features by relying on client-side navigation, browser history behavior, or a Leptos component mounting at the right time.
+
+Use the explicit `/realtime/socket` lane from the generated `_worker.js` for request-scoped capability checks. If the feature has rooms, presence, collaboration, fanout, reconnect state, or any shared state across clients, introduce a Durable Object and document the object key.
+
+Required proof after touching realtime routing:
+
+```bash
+bash ./scripts/build-edge.sh
+bun ./scripts/verify-worker-runtime.mjs
+bunx wrangler@4.83.0 deploy --dry-run
+```
+
 **`error: wasm-bindgen version mismatch`**
 
-The installed `wasm-bindgen-cli` version must match what the build resolves. The `Cargo.toml` specifies `wasm-bindgen = "0.2.105"` as a minimum version — Cargo may resolve a higher version. The `bootstrap.sh` script pins CLI version `0.2.114` to match the verified build.
+The `wasm-bindgen-cli` version must match what `Cargo.lock` resolves. The production build wraps `cargo leptos` with `scripts/with-wasm-bindgen-cli.sh`, which installs the lockfile-matched CLI under `var/cargo-tools/` and puts it first on `PATH` for the build.
 
-Check the installed version:
+Check the repo-local version:
 ```bash
-wasm-bindgen --version
+./scripts/with-wasm-bindgen-cli.sh --version
 ```
 
-Fix — install the version that `bootstrap.sh` expects:
+Fix — refresh the repo-local tool and rerun the build:
 ```bash
-cargo install -f wasm-bindgen-cli --version 0.2.114
+rm -rf var/cargo-tools/wasm-bindgen-*
+bash ./scripts/build-edge.sh
 ```
-
-If the error message names a specific version, install that exact version instead.
 
 ---
 

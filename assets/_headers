@@ -9,3 +9,23 @@
 /favicon.svg
   Cache-Control: public, max-age=3600, must-revalidate
   X-Content-Type-Options: nosniff
+
+/app-icon.svg
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/app-icon-192.png
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/app-icon-512.png
+  Cache-Control: public, max-age=3600, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/site.webmanifest
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff

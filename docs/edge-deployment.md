@@ -97,7 +97,7 @@ wrangler secret put STRIPE_SECRET_KEY
 For local development, create `.dev.vars` in the project root (it is gitignored):
 
 ```
-STRIPE_SECRET_KEY=sk_test_...
+STRIPE_SECRET_KEY=<local-stripe-secret>
 APP_ENV=development
 ```
 
@@ -118,11 +118,12 @@ D1 is Cloudflare's serverless SQLite database. It runs SQLite — the same engin
 
 ### Architecture
 
-D1 has a single primary instance where all writes land. Cloudflare replicates data to read replicas in each region. Reads are served from the nearest replica. This means:
+D1 has a single primary instance where all writes land. If you enable D1 read replication for a production database and use the D1 Sessions API, Cloudflare can route session reads to replicas closer to the user. This means:
 
 - **Writes are globally consistent**: once a write completes, it's durable
-- **Reads are eventually consistent**: after a write, replicas in other regions may lag briefly (typically under a second, but not guaranteed)
-- **Read performance is excellent** for global users; write latency depends on distance to the primary
+- **Session reads can use replicas**: replicas may lag, so use D1 sessions/bookmarks for sequential consistency
+- **Read performance can improve for global users**: write latency still depends on distance to the primary
+- **The template leaves replication as an account/database choice**: the default `workers-rs` D1 binding path used here does not expose the Sessions API, so do not model read replication as a `wrangler.toml` switch
 
 ### Creating a Database and Applying Migrations
 
@@ -449,6 +450,8 @@ If the handler returns an error or a message is not acknowledged, Cloudflare ret
 
 Durable Objects provide a single-instance guarantee: for a given ID, exactly one Durable Object instance is active anywhere in the world at a time. That instance has its own transactional key-value storage and can hold WebSocket connections.
 
+The starter's generated `_worker.js` reserves `/realtime/socket` as the template WebSocket capability endpoint. Treat that endpoint as proof of routing and upgrade handling, not as a production room server. Once multiple clients need shared state, route the upgrade to a Durable Object keyed by room, document, tenant, or another coordination ID.
+
 ### When to Use Durable Objects
 
 - **WebSocket servers**: chat rooms, live collaboration, presence indicators — one DO per room
@@ -514,14 +517,15 @@ A `wrangler.toml` for this setup:
 
 ```toml
 name = "my-app"
-main = "build/index.js"
-compatibility_date = "2026-03-20"
+main = "build/_worker.js"
+compatibility_date = "2026-04-22"
 
 [build]
 command = "bash ./scripts/build-edge.sh"
 
 [assets]
 directory = "./target/site"
+binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
