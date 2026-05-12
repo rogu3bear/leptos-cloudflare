@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, Meta, MetaTags, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
-    StaticSegment,
+    SsrMode, StaticSegment, WildcardSegment,
 };
 
 use crate::components::todo_page::TodoPage;
@@ -16,6 +16,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+                <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+                <link rel="manifest" href="/site.webmanifest"/>
+                <meta name="theme-color" content="#171412"/>
                 <AutoReload options=options.clone()/>
                 <HashedStylesheet options=options.clone()/>
                 <EdgeHydrationScripts options=options/>
@@ -41,9 +44,21 @@ pub fn App() -> impl IntoView {
 
         <Router>
             <Routes fallback=|| view! { <p class="route-miss">"Page not found."</p> }.into_view()>
-                <Route path=StaticSegment("") view=TodoPage/>
+                <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
+                <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
             </Routes>
         </Router>
+    }
+}
+
+#[component]
+fn NotFoundPage() -> impl IntoView {
+    view! {
+        <main class="page-shell">
+            <section class="feedback feedback--error">
+                <p>"Page not found."</p>
+            </section>
+        </main>
     }
 }
 
@@ -73,6 +88,11 @@ fn EdgeHydrationScripts(options: LeptosOptions) -> impl IntoView {
 
 fn asset_href(options: &LeptosOptions, extension: &str, hash: &str) -> String {
     let output_name = options.output_name.as_ref();
+    let output_name = if output_name.is_empty() {
+        env!("CARGO_PKG_NAME")
+    } else {
+        output_name
+    };
     let pkg_dir = options.site_pkg_dir.as_ref();
 
     if hash.is_empty() {

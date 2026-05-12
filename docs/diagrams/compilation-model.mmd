@@ -15,13 +15,15 @@ flowchart TB
 
     subgraph bin_branch["bin target (--features ssr)"]
         worker_build["worker-build"]
-        worker_out["Worker WASM\n(build/index.js)"]
+        worker_out["Compiled Worker module\n(build/index.js)"]
+        shim["Generated Worker router\n(build/_worker.js)"]
     end
 
     cargo --> lib_branch
     cargo --> bin_branch
     wb --> wasm_out
     worker_build --> worker_out
+    worker_out --> shim
 
     shared --> lib_branch
     shared --> bin_branch

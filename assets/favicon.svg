@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
-  <rect width="96" height="96" rx="24" fill="#231C17"/>
-  <rect x="16" y="18" width="64" height="60" rx="14" fill="#FFF8F2"/>
-  <path d="M30 36H66" stroke="#DF5D2F" stroke-width="8" stroke-linecap="round"/>
-  <path d="M30 51H54" stroke="#1F7A52" stroke-width="8" stroke-linecap="round"/>
-  <path d="M30 66H48" stroke="#231C17" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="69" cy="66" r="9" fill="#DF5D2F"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">Leptos CF Starter</title>
+  <rect width="96" height="96" rx="22" fill="#171412"/>
+  <path d="M22 50c0-17.1 13.1-31 29.3-31 10.4 0 19.9 5.8 25.1 15" fill="none" stroke="#F2B84B" stroke-width="9" stroke-linecap="round"/>
+  <path d="M74 46c0 17.1-13.1 31-29.3 31-10.3 0-19.6-5.6-24.9-14.7" fill="none" stroke="#5BC7D8" stroke-width="9" stroke-linecap="round"/>
+  <path d="M31 48h33" stroke="#FFF8F2" stroke-width="8" stroke-linecap="round"/>
+  <path d="M48 31v34" stroke="#FFF8F2" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="75" cy="34" r="7" fill="#DF5D2F"/>
+  <circle cx="21" cy="62" r="7" fill="#1F7A52"/>
 </svg>

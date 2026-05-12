@@ -17,6 +17,7 @@ Two paths depending on your needs:
 ## Building
 
 - **[Building Features](building-features.md)** -- Practical guide to extending this starter. Adding routes, server functions, D1 tables, components, and styles. Covers error handling, secrets, and verification.
+- **[Realtime and WebSockets](realtime.md)** -- WebSocket routing contract, template capability endpoint, and when to graduate to Durable Objects.
 
 ## For AI Agents
 

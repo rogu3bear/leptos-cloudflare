@@ -69,6 +69,10 @@ pub fn TodoPage() -> impl IntoView {
     view! {
         <main class="page-shell">
             <section class="hero">
+                <div class="brand-lockup">
+                    <img class="brand-mark" src="/app-icon.svg" alt="Leptos CF Starter logo"/>
+                    <span>"Leptos CF Starter"</span>
+                </div>
                 <p class="eyebrow">"Leptos + Cloudflare Workers + D1"</p>
                 <div class="hero-grid">
                     <div class="hero-copy">

@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
-EXPECTED_WASM_BINDGEN_VERSION="0.2.114"
 EXPECTED_WORKER_BUILD_VERSION="0.7.5"
 EXPECTED_WRANGLER_VERSION="4.83.0"
 missing=0
@@ -40,6 +39,10 @@ wrangler_cmd() {
   bunx "wrangler@${EXPECTED_WRANGLER_VERSION}" "$@"
 }
 
+expected_wasm_bindgen_version() {
+  "$ROOT_DIR/scripts/with-wasm-bindgen-cli.sh" --version | awk '{print $2}'
+}
+
 if cargo leptos --version >/dev/null 2>&1; then
   cargo_leptos_version="$(cargo leptos --version | awk '{print $2}')"
   if [ "$cargo_leptos_version" = "$EXPECTED_CARGO_LEPTOS_VERSION" ]; then
@@ -57,16 +60,24 @@ else
   fail "Wrangler $EXPECTED_WRANGLER_VERSION is not available through bunx. Check your Bun installation and network access."
 fi
 
+EXPECTED_WASM_BINDGEN_VERSION="$(expected_wasm_bindgen_version)"
+
 if command -v wasm-bindgen >/dev/null 2>&1; then
   wasm_bindgen_version="$(wasm-bindgen --version | awk '{print $2}')"
   if [ "$wasm_bindgen_version" = "$EXPECTED_WASM_BINDGEN_VERSION" ]; then
     pass "wasm-bindgen-cli ($wasm_bindgen_version)"
   else
-    warn "wasm-bindgen-cli is $wasm_bindgen_version, expected $EXPECTED_WASM_BINDGEN_VERSION for the verified toolchain."
-    warn "Fix with: cargo install -f wasm-bindgen-cli --version $EXPECTED_WASM_BINDGEN_VERSION"
+    warn "global wasm-bindgen-cli is $wasm_bindgen_version; build uses repo-local $EXPECTED_WASM_BINDGEN_VERSION from Cargo.lock."
   fi
 else
-  fail "wasm-bindgen-cli is not installed. Run: cargo install -f wasm-bindgen-cli --version $EXPECTED_WASM_BINDGEN_VERSION"
+  warn "global wasm-bindgen-cli is not installed; build uses repo-local $EXPECTED_WASM_BINDGEN_VERSION from Cargo.lock."
+fi
+
+repo_wasm_bindgen_version="$EXPECTED_WASM_BINDGEN_VERSION"
+if [ "$repo_wasm_bindgen_version" = "$EXPECTED_WASM_BINDGEN_VERSION" ]; then
+  pass "repo-local wasm-bindgen-cli ($repo_wasm_bindgen_version)"
+else
+  fail "repo-local wasm-bindgen-cli is $repo_wasm_bindgen_version, expected $EXPECTED_WASM_BINDGEN_VERSION"
 fi
 
 if command -v worker-build >/dev/null 2>&1; then

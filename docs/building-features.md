@@ -41,7 +41,7 @@ pub mod todo_page;
 // src/app.rs
 use leptos_router::{
     components::{Route, Router, Routes},
-    StaticSegment,
+    SsrMode, StaticSegment, WildcardSegment,
 };
 
 use crate::components::about_page::AboutPage;
@@ -56,8 +56,9 @@ pub fn App() -> impl IntoView {
 
         <Router>
             <Routes fallback=|| view! { <p class="route-miss">"Page not found."</p> }.into_view()>
-                <Route path=StaticSegment("") view=TodoPage/>
-                <Route path=StaticSegment("about") view=AboutPage/>
+                <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
+                <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+                <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
             </Routes>
         </Router>
     }
@@ -65,6 +66,8 @@ pub fn App() -> impl IntoView {
 ```
 
 For dynamic segments (e.g., `/todos/:id`), use `leptos_router::ParamSegment("id")` and retrieve the parameter inside the component with `use_params_map()`.
+
+Keep the catch-all route last. It protects full document reloads and pre-hydration deep links from falling through to a platform 404.
 
 ---
 
@@ -593,8 +596,8 @@ Create `.dev.vars` in the project root (it is gitignored):
 
 ```ini
 # .dev.vars
-STRIPE_SECRET_KEY=sk_test_...
-SENDGRID_API_KEY=SG....
+STRIPE_SECRET_KEY=<local-stripe-secret>
+SENDGRID_API_KEY=<local-sendgrid-secret>
 ```
 
 Wrangler injects these as environment bindings when running `wrangler dev`.
