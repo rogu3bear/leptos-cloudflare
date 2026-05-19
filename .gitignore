@@ -9,3 +9,13 @@ var
 .dev.vars
 .dev.vars.*
 .DS_Store
+
+# Local operator/agent strategy files. Keep these useful in private checkouts
+# but out of the public template.
+AGENTS.md
+CLAUDE.md
+NORTH_STAR.md
+ANCHOR.md
+.agents/
+.claude/
+*.local.md
