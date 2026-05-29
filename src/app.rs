@@ -2,9 +2,12 @@ use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, Meta, MetaTags, Title};
 use leptos_router::{
     components::{Route, Router, Routes},
-    SsrMode, StaticSegment, WildcardSegment,
+    ParamSegment, SsrMode, StaticSegment, WildcardSegment,
 };
 
+use crate::components::about_page::AboutPage;
+use crate::components::app_layout::AppLayout;
+use crate::components::todo_detail_page::TodoDetailPage;
 use crate::components::todo_page::TodoPage;
 
 #[allow(dead_code)]
@@ -42,12 +45,36 @@ pub fn App() -> impl IntoView {
             content="A full-stack Leptos starter for Cloudflare Workers with D1-backed todos."
         />
 
-        <Router>
-            <Routes fallback=|| view! { <p class="route-miss">"Page not found."</p> }.into_view()>
-                <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
-                <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
-            </Routes>
-        </Router>
+        // AppLayout provides a persistent header + navigation across all pages.
+        // This is a practical, production-common way to achieve shared layout UI
+        // that works cleanly with Leptos SSR + hydration on the edge.
+        //
+        // For more advanced router-driven layouts using `<Outlet/>` with deeply
+        // nested routes, see the comments in AppLayout and the Leptos router docs.
+        // The exact declarative nesting syntax can be sensitive to leptos_router version.
+        <AppLayout>
+            <Router>
+                <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
+                    // Main content routes
+                    <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
+                    <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+
+                    // Dynamic route using ParamSegment — demonstrates clean entity
+                    // detail pages powered by dedicated server functions + reactivity.
+                    <Route
+                        path=(StaticSegment("todo"), ParamSegment("id"))
+                        view=TodoDetailPage
+                        ssr=SsrMode::OutOfOrder
+                    />
+
+                    // Critical for Cloudflare + Leptos on the edge:
+                    // This must be last. It ensures deep links and pre-hydration
+                    // requests get a full SSR HTML shell (in cooperation with
+                    // the generated `build/_worker.js`).
+                    <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
+                </Routes>
+            </Router>
+        </AppLayout>
     }
 }
 
