@@ -12,16 +12,13 @@ rustup target add wasm32-unknown-unknown
 
 ## Expected Checks
 
-Run these before opening a pull request:
+Run the full release readiness verification before opening a pull request:
 
 ```bash
-./scripts/check-deps.sh
-cargo fmt --check
-cargo check --features ssr
-bash ./scripts/build-edge.sh
-bunx wrangler@4.83.0 deploy --dry-run
-git diff --check
+./scripts/verify.sh
 ```
+
+This is the exact sequence executed by CI. For quick iteration on small changes you can use the lighter protocol described in `docs/agent-playbook.md`.
 
 `wrangler.toml` contains placeholder D1 IDs until a new project initializes the template. The dependency check warning for those placeholders is expected in the template repo.
 

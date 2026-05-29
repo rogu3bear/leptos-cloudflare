@@ -12,15 +12,13 @@ Use this checklist before tagging or announcing a public template release.
 
 ## Required Gates
 
+Run the single verification command (this is what CI runs):
+
 ```bash
-./scripts/check-deps.sh
-cargo fmt --check
-cargo check --features ssr
-cargo audit
-bash ./scripts/build-edge.sh
-bunx wrangler@4.83.0 deploy --dry-run
-git diff --check
+./scripts/verify.sh
 ```
+
+The script executes the complete sequence (including `git diff --check` as the final hygiene step).
 
 Expected template warning:
 

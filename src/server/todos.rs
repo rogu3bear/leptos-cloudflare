@@ -151,6 +151,12 @@ pub async fn delete_todo(id: i64) -> AppResult<()> {
     ensure_row_changed(result, "delete")
 }
 
+pub async fn get_todo(id: i64) -> AppResult<TodoItem> {
+    let db = database()?;
+    let session_id = session_id()?;
+    get_todo_by_id(&db, id, session_id.as_str()).await
+}
+
 fn database() -> AppResult<worker::D1Database> {
     app_state()?
         .db()

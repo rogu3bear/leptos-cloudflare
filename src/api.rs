@@ -95,3 +95,21 @@ pub async fn delete_todo(id: i64) -> Result<(), ServerFnError> {
         unreachable!("server functions only execute on the server")
     }
 }
+
+#[server(GetTodo)]
+pub async fn get_todo(id: i64) -> Result<TodoItem, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        send_wrapper::SendWrapper::new(async move {
+            crate::server::todos::get_todo(id)
+                .await
+                .map_err(crate::server::server_error)
+        })
+        .await
+    }
+
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("server functions only execute on the server")
+    }
+}

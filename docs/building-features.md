@@ -41,10 +41,11 @@ pub mod todo_page;
 // src/app.rs
 use leptos_router::{
     components::{Route, Router, Routes},
-    SsrMode, StaticSegment, WildcardSegment,
+    SsrMode, ParamSegment, StaticSegment, WildcardSegment,
 };
 
 use crate::components::about_page::AboutPage;
+use crate::components::todo_detail_page::TodoDetailPage;
 use crate::components::todo_page::TodoPage;
 
 #[component]
@@ -55,9 +56,14 @@ pub fn App() -> impl IntoView {
         <Title text="Leptos CF Starter"/>
 
         <Router>
-            <Routes fallback=|| view! { <p class="route-miss">"Page not found."</p> }.into_view()>
+            <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
                 <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
                 <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+                <Route
+                    path=(StaticSegment("todo"), ParamSegment("id"))
+                    view=TodoDetailPage
+                    ssr=SsrMode::OutOfOrder
+                />
                 <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
             </Routes>
         </Router>
@@ -65,9 +71,32 @@ pub fn App() -> impl IntoView {
 }
 ```
 
-For dynamic segments (e.g., `/todos/:id`), use `leptos_router::ParamSegment("id")` and retrieve the parameter inside the component with `use_params_map()`.
+For dynamic segments (e.g. `/todo/:id`), use `leptos_router::ParamSegment("id")` (or a tuple path like `(StaticSegment("todo"), ParamSegment("id"))`) and read the value with `use_params_map()` from `leptos_router::hooks`.
 
-Keep the catch-all route last. It protects full document reloads and pre-hydration deep links from falling through to a platform 404.
+The template demonstrates this live at `/todo/:id` (see `TodoDetailPage` + the `GetTodo` server function).
+
+**Critical for Cloudflare Workers + Leptos edge:**
+
+Keep the `WildcardSegment("any")` catch-all **last**. Combined with the generated `build/_worker.js` shim, this guarantees that any deep link, browser refresh, or pre-hydration client navigation still receives a full server-rendered HTML document instead of a platform 404.
+
+Use `<A href=...>` (from `leptos_router::components`) for internal links. After hydration it enables fast client-side navigation; before hydration or on hard refresh it falls back to normal document requests (which the catch-all + SSR path handles correctly).
+
+Example of the current recommended router shape in `src/app.rs`:
+
+```rust
+<Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
+    <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
+    <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+    <Route
+        path=(StaticSegment("todo"), ParamSegment("id"))
+        view=TodoDetailPage
+        ssr=SsrMode::OutOfOrder
+    />
+    <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
+</Routes>
+```
+
+`SsrMode::OutOfOrder` is the recommended default for most interactive pages on this stack (best perceived performance on the edge).
 
 ---
 

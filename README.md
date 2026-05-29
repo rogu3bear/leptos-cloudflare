@@ -495,6 +495,10 @@ sync.
 
 ---
 
+## Patterns Library
+
+Real applications need more than the minimal starter. See the [`patterns/`](./patterns/) directory for battle-tested, well-documented solutions to common problems (dynamic entity detail, shared layouts, etc.). These are designed to be composed on top of the core template while keeping the starter itself lean.
+
 ## Architecture Notes
 
 ### Server function flow
@@ -534,14 +538,13 @@ CREATE TABLE IF NOT EXISTS todos (
 
 ### Verification targets
 
+The complete release readiness check (same as CI):
+
 ```bash
-./scripts/check-deps.sh                                    # toolchain
-cargo check --features ssr                                 # server compilation
-bash ./scripts/build-edge.sh                               # full edge build with hashed assets
-bun ./scripts/verify-worker-runtime.mjs                    # Worker shim + Assets binding
-bunx wrangler@4.83.0 deploy --dry-run                             # deployment structure
-bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581     # local smoke test
+./scripts/verify.sh
 ```
+
+For the individual pieces that the script orchestrates, see the script itself and `AGENTS.md`.
 
 ---
 
