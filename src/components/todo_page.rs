@@ -1,4 +1,5 @@
 use leptos::{ev::SubmitEvent, prelude::*};
+use leptos_router::components::A;
 
 use crate::api::{list_todos, CreateTodo, DeleteTodo, TodoItem, TodosResponse, ToggleTodo};
 
@@ -170,6 +171,17 @@ fn TodoBoard(
     } = data;
     let has_items = !items.is_empty();
     let items = std::sync::Arc::new(items);
+
+    // Demonstrates fine-grained reactivity with Memo.
+    // This derived value only recomputes when `stats` changes,
+    // and only the nodes that read it will update.
+    let completion_rate = Memo::new(move |_| {
+        if stats.total == 0 {
+            0
+        } else {
+            (stats.completed as f32 / stats.total as f32 * 100.0) as i32
+        }
+    });
     let list_or_empty = if has_items {
         view! {
             <ul class="todo-list">
@@ -215,6 +227,10 @@ fn TodoBoard(
             <article class="stat-card">
                 <span class="stat-label">"Completed"</span>
                 <strong class="stat-value">{stats.completed}</strong>
+            </article>
+            <article class="stat-card">
+                <span class="stat-label">"Done"</span>
+                <strong class="stat-value">{completion_rate} "%"</strong>
             </article>
         </section>
 
@@ -307,7 +323,14 @@ fn TodoRow(
             </button>
 
             <div class="todo-copy">
-                <h3>{title.clone()}</h3>
+                <h3>
+                    <A
+                        href=format!("/todo/{}", id)
+                        attr:style="color: inherit; text-decoration: none;"
+                    >
+                        {title.clone()}
+                    </A>
+                </h3>
                 <p>
                     {move || {
                         if is_toggling() {
