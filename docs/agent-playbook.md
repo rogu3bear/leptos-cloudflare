@@ -199,22 +199,26 @@ Do not edit `src/lib.rs` for feature work. It contains only the Worker `fetch` e
 
 ## 6. Verification Protocol
 
-Run these three commands in order after any code change. Do not skip steps.
+For day-to-day iteration, use this lighter sequence:
 
 ```bash
-# Step 1: Fast type-check for SSR (catches server-side errors quickly)
+# Step 1: Fast type-check for SSR
 cargo check --features ssr
 
-# Step 2: Full build (catches WASM compilation and linking errors)
+# Step 2: Full edge build + verifiers
 bash ./scripts/build-edge.sh
 
-# Step 3: Validate the deployment artifact
-bunx wrangler deploy --dry-run
+# Step 3: Deployment structure validation
+bunx wrangler@4.83.0 deploy --dry-run
 ```
 
-A change is only verified when all three commands exit 0 without errors. Warnings are acceptable; errors are not.
+Before pushing or declaring a change complete, run the full release readiness verification instead:
 
-For changes that only touch `src/components/` or `style/main.css`, step 1 is sufficient for a fast iteration loop. Run steps 2 and 3 before declaring the change done.
+```bash
+./scripts/verify.sh
+```
+
+This is the exact sequence used by CI and documented in `AGENTS.md` / `RELEASE.md`.
 
 ---
 
