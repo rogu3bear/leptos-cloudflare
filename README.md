@@ -495,6 +495,10 @@ sync.
 
 ---
 
+## Patterns Library
+
+Real applications need more than the minimal starter. See the [`patterns/`](./patterns/) directory for battle-tested, well-documented solutions to common problems (dynamic entity detail, shared layouts, etc.). These are designed to be composed on top of the core template while keeping the starter itself lean.
+
 ## Architecture Notes
 
 ### Server function flow

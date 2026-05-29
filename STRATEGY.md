@@ -43,6 +43,8 @@ Its highest value is:
 - Suspense / progressive loading patterns suitable for edge SSR
 - Educational comments that explain *why* certain patterns exist in this stack
 
+The `/patterns/` directory has been created as the first concrete step of the two-layer architecture. See `patterns/README.md`.
+
 ## Future Horizons
 
 - Formal Patterns Library (auth, realtime via Durable Objects, R2 uploads, background work, etc.)
