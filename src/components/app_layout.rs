@@ -20,6 +20,7 @@ pub fn AppLayout(children: Children) -> impl IntoView {
                 <nav class="main-nav">
                     <A href="/" attr:class="nav-link">"Todos"</A>
                     <A href="/about" attr:class="nav-link">"About"</A>
+                    <A href="/contact" attr:class="nav-link">"Contact"</A>
                 </nav>
             </div>
         </header>

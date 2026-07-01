@@ -85,15 +85,15 @@ Then apply to the remote D1 database:
 bunx wrangler d1 migrations apply leptos-cf-db --remote
 ```
 
-Expected output for each: `Applying migration 0001_init.sql... done`.
+Expected output includes the checked-in migrations ending in `done`.
 
-The migration creates the `todos` table and the `(completed, id DESC)` index. Verify with:
+The migrations create the `todos` and `contact_submissions` tables plus their indexes. Verify with:
 
 ```bash
 bunx wrangler d1 execute leptos-cf-db --local --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
-Expected: `todos` appears in the result.
+Expected: `todos` and `contact_submissions` appear in the result.
 
 ### 2.4 Build
 
@@ -180,7 +180,7 @@ Before editing any file, confirm it matches the kind of change you are making.
 | What you are changing | File(s) to edit |
 |-----------------------|-----------------|
 | Shared types, server function signatures | `src/api.rs` |
-| D1 query logic | `src/server/todos.rs` (or new file in `src/server/`) |
+| D1 query logic | `src/server/todos.rs`, `src/server/contact.rs` (or new file in `src/server/`) |
 | New server submodule | `src/server/mod.rs` — add `pub mod <name>` |
 | UI components | `src/components/<name>.rs` |
 | New component exports | `src/components/mod.rs` |
@@ -188,12 +188,18 @@ Before editing any file, confirm it matches the kind of change you are making.
 | CSS styles | `style/main.css` |
 | Database schema | `migrations/NNNN_<name>.sql` (new file, never edit applied migrations) |
 | Cloudflare bindings (D1, KV, R2, etc.) | `wrangler.toml` |
+| WebSocket ingress contract | `scripts/write-worker-shim.mjs`, `docs/realtime.md` |
+| Shared realtime state | `patterns/realtime-durable-object/` first, then `wrangler.toml` and `scripts/write-worker-shim.mjs` when adopting |
 | Local dev secrets | `.dev.vars` (create if absent; never commit this file) |
 | Production secrets | `bunx wrangler secret put ...` (stored in CF, not in files) |
 | Worker entry point + app state wiring | `src/server/state.rs`, `src/lib.rs` |
 | Rust dependencies | `Cargo.toml` |
 
 Do not edit `src/lib.rs` for feature work. It contains only the Worker `fetch` entry point and the WASM `hydrate` export. Change it only if the routing or app state wiring needs to change.
+
+The public `/contact` route is intentionally local to the template: it validates and persists submissions to D1, applies session-scoped submission caps, and relies on the Worker `/api/*` origin guard before Leptos server functions dispatch. It does not send email, webhooks, or third-party API calls without an explicit integration.
+
+The public `/realtime/socket` route is intentionally a Worker-level capability lane. Keep request-scoped demos in the generated shim; move rooms, presence, collaboration, fanout, reconnect state, or other shared state to `patterns/realtime-durable-object/` before adding Durable Object bindings.
 
 ---
 

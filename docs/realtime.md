@@ -41,6 +41,18 @@ Use Durable Objects for:
 
 The durable pattern is one Durable Object per room, document, tenant, or other coordination key. The Worker should authenticate the request, derive the object ID, forward the WebSocket upgrade to that object, and let the object own connection state.
 
+## Shared-State Pattern
+
+Use [Realtime Durable Object](../patterns/realtime-durable-object/) when `/realtime/socket` needs shared state. The example keeps the core route contract but changes the implementation from "accept and close" to:
+
+1. Worker validates the WebSocket upgrade and session.
+2. Worker derives a stable room/document key.
+3. Worker calls `env.REALTIME_ROOM.getByName(key).fetch(request)`.
+4. Durable Object accepts the server socket with `ctx.acceptWebSocket(server)`.
+5. Durable Object persists important events before broadcasting to `ctx.getWebSockets(room)`.
+
+The required Wrangler binding and migration are documented in `patterns/realtime-durable-object/wrangler.durable-object.example.toml`. Do not add that binding to the core template unless the application adopts the pattern.
+
 ## Agent Checklist
 
 Before adding realtime behavior, answer these in the PR or implementation notes:
