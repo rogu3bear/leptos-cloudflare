@@ -1,0 +1,9 @@
+# Add this block to wrangler.toml only when adopting the realtime Durable Object pattern.
+
+[[durable_objects.bindings]]
+name = "REALTIME_ROOM"
+class_name = "RealtimeRoom"
+
+[[migrations]]
+tag = "v1_realtime_room"
+new_sqlite_classes = ["RealtimeRoom"]

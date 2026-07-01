@@ -2,7 +2,7 @@
 
 A full-stack [Leptos 0.8](https://leptos.dev/) starter deployed to Cloudflare Workers. SSR on the edge, hydration in the browser, D1 for persistence, and an agent-first setup workflow that lets your AI coding assistant provision the entire Cloudflare stack for you.
 
-The included example is a D1-backed todo app with list, create, toggle, and delete flows implemented entirely through Leptos server functions. The default demo keeps todos isolated to each browser session and only renders the newest slice so the starter stays bounded under public traffic.
+The included example is a D1-backed todo app with list, create, toggle, and delete flows implemented entirely through Leptos server functions. It also includes a public `/contact` intake route that demonstrates bounded form handling, origin-checked server-function posts, honeypot filtering, and D1-backed submission caps without sending external email. The default demo keeps todos and contact submissions isolated to each browser session and only renders the newest todo slice so the starter stays bounded under public traffic.
 
 ## Why This Stack
 
@@ -16,6 +16,7 @@ Cloudflare gives you the deployment surface: Workers for compute, D1 for SQL, As
 - Worker entrypoint using `workers-rs` + `axum`
 - Leptos server functions as the full-stack boundary
 - D1 access layer with prepared statements
+- Public contact intake with server-side validation and session-scoped abuse caps
 - Client-side optimistic UI with loading and error states
 - Bootstrap scripts that verify your toolchain
 - A setup flow designed for AI coding agents
@@ -242,7 +243,7 @@ bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581
 ```
 
 Wrangler serves the Worker and the asset bundle from `target/site`. The todo UI talks to D1 only through Leptos server functions.
-Each browser session gets its own cookie-scoped todo queue, and the starter only renders the newest 100 rows from that queue so the public demo stays responsive.
+Each browser session gets its own cookie-scoped todo queue and contact submission budget. The starter only renders the newest 100 todo rows from that queue so the public demo stays responsive.
 
 **Local secrets**: Create a `.dev.vars` file (gitignored) for local environment variables:
 
@@ -287,7 +288,7 @@ Cache behavior is split cleanly:
 - Dynamic Worker responses (`/`, route HTML, server functions) ship with `Cache-Control: no-store`
 - `asset-manifest.json` is also `no-store`, so deploys never strand old asset pointers
 
-See [Realtime and WebSockets](docs/realtime.md) before adding chat, presence, collaboration, live dashboards, or any other WebSocket-backed feature. The short rule: request-scoped upgrades can stay in the Worker; shared state belongs in a Durable Object.
+See [Realtime and WebSockets](docs/realtime.md) before adding chat, presence, collaboration, live dashboards, or any other WebSocket-backed feature. The short rule: request-scoped upgrades can stay in the Worker; shared state belongs in a Durable Object. The first shared-state example lives in [Realtime Durable Object](patterns/realtime-durable-object/).
 
 ### Setting secrets
 
@@ -450,7 +451,9 @@ Pricing is scale-to-zero: memory, CPU (active usage only), and disk are billed p
 ├── Cargo.toml               # single-crate config with feature flags
 ├── wrangler.toml             # Worker + D1 + Assets config
 ├── migrations/
-│   └── 0001_init.sql         # todos table + index
+│   ├── 0001_init.sql         # todos table + index
+│   ├── 0002_session_scope.sql
+│   └── 0003_contact_submissions.sql
 ├── scripts/
 │   ├── bootstrap.sh          # install missing tools
 │   └── check-deps.sh         # verify toolchain
@@ -461,10 +464,12 @@ Pricing is scale-to-zero: memory, CPU (active usage only), and disk are billed p
 │   ├── api.rs                # shared types + #[server] functions
 │   ├── components/
 │   │   ├── mod.rs
+│   │   ├── contact_page.rs   # Public contact intake
 │   │   └── todo_page.rs      # TodoPage, TodoBoard, TodoRow
 │   └── server/
 │       ├── mod.rs             # re-exports + server_error helper
 │       ├── state.rs           # AppState (LeptosOptions + worker::Env)
+│       ├── contact.rs         # Contact validation persistence + caps
 │       └── todos.rs           # D1 query layer
 ├── style/
 │   └── main.css              # hand-written CSS
@@ -497,7 +502,7 @@ sync.
 
 ## Patterns Library
 
-Real applications need more than the minimal starter. See the [`patterns/`](./patterns/) directory for battle-tested, well-documented solutions to common problems (dynamic entity detail, shared layouts, etc.). These are designed to be composed on top of the core template while keeping the starter itself lean.
+Real applications need more than the minimal starter. See the [`patterns/`](./patterns/) directory for battle-tested, well-documented solutions to common problems (dynamic entity detail, shared layouts, realtime Durable Objects, etc.). These are designed to be composed on top of the core template while keeping the starter itself lean.
 
 ## Architecture Notes
 
@@ -525,16 +530,19 @@ These are mutually exclusive at compile time. `cargo-leptos` builds the lib with
 
 The Worker's `Env` (which holds D1 bindings) is wrapped in `Arc` inside `AppState`, provided as axum state, and extracted in server functions via `use_context::<AppState>()`. All queries use prepared statements with `bind_refs` for parameterized SQL.
 
-### Default todo schema
+### Default D1 schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS todos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
   title TEXT NOT NULL,
   completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+The contact route adds a `contact_submissions` table keyed by the same browser-session cookie. It stores normalized form fields only; it does not store client IP addresses and it does not send email or webhooks. Add a Queue, email provider binding, Turnstile, or Cloudflare Rate Limiting rule before using it as a production intake path.
 
 ### Verification targets
 

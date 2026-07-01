@@ -140,21 +140,47 @@ wrangler d1 migrations apply leptos-cf-db --local
 
 The `migrations_dir` in `wrangler.toml` points to the `migrations/` directory. Wrangler tracks which migrations have been applied and runs only new ones.
 
-The migration in this starter creates the todos table:
+The migrations in this starter create the session-scoped todo table and the D1-backed contact intake table:
 
 ```sql
 CREATE TABLE IF NOT EXISTS todos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
   title TEXT NOT NULL,
   completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_todos_completed_id
-ON todos (completed, id DESC);
+CREATE TABLE IF NOT EXISTS contact_submissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-The composite index on `(completed, id DESC)` matches the query in `list_todos`, which orders by `completed ASC, id DESC`. Index design matters in D1 just as in any SQLite database.
+The composite indexes on `(session_id, completed, id DESC)` and `(session_id, created_at DESC)` match the session-scoped read and rate-limit queries. Index design matters in D1 just as in any SQLite database.
+
+### Durable Objects for Shared Realtime
+
+The core template does not bind a Durable Object. `/realtime/socket` stays a minimal WebSocket capability lane until the application needs shared state.
+
+When adopting the shared realtime pattern, add the Durable Object class export to the generated Worker shim source (`scripts/write-worker-shim.mjs`) and add a binding/migration like:
+
+```toml
+[[durable_objects.bindings]]
+name = "REALTIME_ROOM"
+class_name = "RealtimeRoom"
+
+[[migrations]]
+tag = "v1_realtime_room"
+new_sqlite_classes = ["RealtimeRoom"]
+```
+
+See `patterns/realtime-durable-object/` for the complete handoff example. Keep one Durable Object per room, document, tenant, or other coordination key; do not route all WebSocket clients to a single global object.
 
 ### Query Pattern
 

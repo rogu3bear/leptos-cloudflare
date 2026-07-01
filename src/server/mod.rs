@@ -1,3 +1,4 @@
+pub mod contact;
 pub mod state;
 pub mod todos;
 

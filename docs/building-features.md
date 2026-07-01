@@ -41,10 +41,11 @@ pub mod todo_page;
 // src/app.rs
 use leptos_router::{
     components::{Route, Router, Routes},
-    SsrMode, ParamSegment, StaticSegment, WildcardSegment,
+    ParamSegment, SsrMode, StaticSegment, WildcardSegment,
 };
 
 use crate::components::about_page::AboutPage;
+use crate::components::contact_page::ContactPage;
 use crate::components::todo_detail_page::TodoDetailPage;
 use crate::components::todo_page::TodoPage;
 
@@ -59,6 +60,7 @@ pub fn App() -> impl IntoView {
             <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
                 <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
                 <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+                <Route path=StaticSegment("contact") view=ContactPage ssr=SsrMode::OutOfOrder/>
                 <Route
                     path=(StaticSegment("todo"), ParamSegment("id"))
                     view=TodoDetailPage
@@ -87,6 +89,7 @@ Example of the current recommended router shape in `src/app.rs`:
 <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
     <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
     <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+    <Route path=StaticSegment("contact") view=ContactPage ssr=SsrMode::OutOfOrder/>
     <Route
         path=(StaticSegment("todo"), ParamSegment("id"))
         view=TodoDetailPage
@@ -103,6 +106,10 @@ Example of the current recommended router shape in `src/app.rs`:
 ## 2. Adding a new server function
 
 Server functions are the only communication channel between the WASM client and the Worker. The pattern has four parts: a shared type in `api.rs`, the `#[server]` fn with a `SendWrapper`, a DB query in `src/server/`, and wiring into a component.
+
+The Worker rejects cross-origin `/api/*` POSTs before Leptos dispatch. If you add browser-submitted server functions, keep them same-origin and use normal Leptos client calls or same-origin forms.
+
+Realtime features are not Leptos server functions. WebSocket upgrades reach the generated Worker shim before the Rust router, so shared realtime state should start from `docs/realtime.md` and `patterns/realtime-durable-object/`, not from a Leptos component or `src/server/` module.
 
 ### 2a. Define the type in api.rs
 

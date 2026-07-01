@@ -36,7 +36,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -158,6 +159,34 @@ input {
 .composer-input:focus {
   outline: 2px solid rgba(223, 93, 47, 0.2);
   border-color: var(--accent);
+}
+
+.contact-grid {
+  grid-template-columns: minmax(0, 0.95fr) minmax(340px, 1.15fr);
+}
+
+.contact-card {
+  gap: 10px;
+}
+
+.contact-message {
+  min-height: 180px;
+  resize: vertical;
+}
+
+.contact-submit {
+  min-height: 48px;
+  margin-top: 6px;
+}
+
+.contact-hidden-field {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .composer-button,

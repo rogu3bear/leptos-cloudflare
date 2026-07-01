@@ -31,6 +31,9 @@ patterns/
 ├── dynamic-entity-detail/    # Example pattern
 │   ├── README.md
 │   └── ...
+├── realtime-durable-object/  # Shared WebSocket state via Durable Objects
+│   ├── README.md
+│   └── ...
 └── shared-layout/            # Another example
     ├── README.md
     └── ...
@@ -59,12 +62,24 @@ We prefer **high-quality, deeply documented patterns** over quantity.
 - The core should remain usable without adopting any patterns.
 - Over time, exceptionally stable and valuable patterns may influence the core, but this should be rare and deliberate.
 
+## Verification Contract
+
+`bun ./scripts/verify-patterns.mjs` runs inside `./scripts/verify.sh`. It fails when:
+
+- A pattern directory is missing its `README.md`.
+- `patterns/README.md` does not link to every pattern directory.
+- A pattern README does not reference at least one core template contract or file.
+- A local markdown link or inline core path reference points at a file that no longer exists.
+
+This keeps the second layer honest: pattern examples and docs can build on the core, but they cannot silently drift away from the checked-in routing, runtime, build, and documentation contracts.
+
 ## Current Patterns
 
 - [Dynamic Entity Detail](./dynamic-entity-detail/) — Typed server functions, ParamSegment routing, fine-grained reactivity, optimistic updates, and independent loading sections.
+- [Realtime Durable Object](./realtime-durable-object/) — Upgrade handoff from `/realtime/socket` into Durable Objects for shared realtime rooms, presence, fanout, and hibernating WebSockets.
 - [Shared Layout Composition](./shared-layout/) — Practical persistent UI layout that works cleanly with SSR/hydration.
 
-More patterns (auth, realtime via Durable Objects, R2 uploads, background work, etc.) are planned.
+More patterns (auth, R2 uploads, background work, etc.) are planned.
 
 ## Long-Term Vision
 

@@ -1,6 +1,9 @@
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "ssr")]
+use crate::contact::ContactSubmissionInput;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TodoItem {
     pub id: i64,
@@ -22,6 +25,12 @@ pub struct TodosResponse {
     pub stats: TodoStats,
     pub visible_limit: usize,
     pub is_truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ContactResponse {
+    pub accepted: bool,
+    pub message: String,
 }
 
 #[server(ListTodos)]
@@ -104,6 +113,36 @@ pub async fn get_todo(id: i64) -> Result<TodoItem, ServerFnError> {
             crate::server::todos::get_todo(id)
                 .await
                 .map_err(crate::server::server_error)
+        })
+        .await
+    }
+
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("server functions only execute on the server")
+    }
+}
+
+#[server(SubmitContact)]
+pub async fn submit_contact(
+    name: String,
+    email: String,
+    topic: String,
+    message: String,
+    website: String,
+) -> Result<ContactResponse, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        send_wrapper::SendWrapper::new(async move {
+            crate::server::contact::submit_contact(ContactSubmissionInput {
+                name,
+                email,
+                topic,
+                message,
+                website,
+            })
+            .await
+            .map_err(crate::server::server_error)
         })
         .await
     }

@@ -7,6 +7,7 @@ use leptos_router::{
 
 use crate::components::about_page::AboutPage;
 use crate::components::app_layout::AppLayout;
+use crate::components::contact_page::ContactPage;
 use crate::components::todo_detail_page::TodoDetailPage;
 use crate::components::todo_page::TodoPage;
 
@@ -45,19 +46,15 @@ pub fn App() -> impl IntoView {
             content="A full-stack Leptos starter for Cloudflare Workers with D1-backed todos."
         />
 
-        // AppLayout provides a persistent header + navigation across all pages.
-        // This is a practical, production-common way to achieve shared layout UI
-        // that works cleanly with Leptos SSR + hydration on the edge.
-        //
-        // For more advanced router-driven layouts using `<Outlet/>` with deeply
-        // nested routes, see the comments in AppLayout and the Leptos router docs.
-        // The exact declarative nesting syntax can be sensitive to leptos_router version.
-        <AppLayout>
-            <Router>
+        <Router>
+            // AppLayout provides a persistent header + navigation across all pages.
+            // Keeping it inside Router gives the shared nav links their routing context.
+            <AppLayout>
                 <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
                     // Main content routes
                     <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
                     <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
+                    <Route path=StaticSegment("contact") view=ContactPage ssr=SsrMode::OutOfOrder/>
 
                     // Dynamic route using ParamSegment — demonstrates clean entity
                     // detail pages powered by dedicated server functions + reactivity.
@@ -73,8 +70,8 @@ pub fn App() -> impl IntoView {
                     // the generated `build/_worker.js`).
                     <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
                 </Routes>
-            </Router>
-        </AppLayout>
+            </AppLayout>
+        </Router>
     }
 }
 
