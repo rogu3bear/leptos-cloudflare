@@ -218,7 +218,7 @@ Before pushing or declaring a change complete, run the full release readiness ve
 ./scripts/verify.sh
 ```
 
-This is the exact sequence used by CI and documented in `AGENTS.md` / `RELEASE.md`.
+This is the authoritative local sequence documented in `RELEASE.md`.
 
 ---
 

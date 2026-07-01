@@ -18,7 +18,7 @@ Run the full release readiness verification before opening a pull request:
 ./scripts/verify.sh
 ```
 
-This is the exact sequence executed by CI. For quick iteration on small changes you can use the lighter protocol described in `docs/agent-playbook.md`.
+This is the authoritative local release gate. For quick iteration on small changes you can use the lighter protocol described in `docs/agent-playbook.md`.
 
 `wrangler.toml` contains placeholder D1 IDs until a new project initializes the template. The dependency check warning for those placeholders is expected in the template repo.
 

@@ -21,7 +21,7 @@ Its highest value is:
 
 2. **Local > Git-dependent**
    - All important verification must be runnable locally via clear scripts (`scripts/verify.sh` is the model).
-   - CI exists only as a thin, reproducible executor of the local contracts.
+   - Remote CI is intentionally absent; local scripts are the release contract.
 
 3. **Agent-Native by Default**
    - Documentation, contracts, and verification should be written so that capable AI agents can bootstrap, extend, and maintain projects from this template with high reliability.

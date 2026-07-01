@@ -2,14 +2,14 @@
 #
 # Full release readiness verification for the leptos-cf template.
 #
-# This is the single local command that reproduces what CI runs.
+# This is the single local command for release readiness.
 # Run it before pushing, opening a PR, or claiming a change is complete.
 #
 # It is intentionally a thin orchestrator — the real power lives in the
 # individual scripts it calls (check-deps.sh, build-edge.sh, etc.).
 set -euo pipefail
 
-echo "==> Verifying release readiness (local equivalent of CI)"
+echo "==> Verifying local release readiness"
 
 echo "==> 1/6 Dependency and toolchain check"
 ./scripts/check-deps.sh
@@ -39,4 +39,4 @@ git diff --check
 
 echo ""
 echo "==> All release readiness checks passed."
-echo "    This is the same sequence executed by .github/workflows/rust.yml"
+echo "    Remote CI is intentionally absent; this local gate is authoritative."

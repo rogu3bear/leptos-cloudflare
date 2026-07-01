@@ -7,5 +7,5 @@
 - Added Leptos CF logo, favicon, app icons, and web manifest assets.
 - Added repo-local `wasm-bindgen-cli` resolution from `Cargo.lock`.
 - Added release, security, contributing, realtime, and agent operating docs.
-- Updated CI to exercise the real template release gates.
+- Updated release verification to exercise the real template gates.
 - Updated compatible Rust dependencies in `Cargo.lock`, including Leptos 0.8.19 and wasm-bindgen 0.2.121.

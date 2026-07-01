@@ -538,7 +538,7 @@ CREATE TABLE IF NOT EXISTS todos (
 
 ### Verification targets
 
-The complete release readiness check (same as CI):
+The complete local release readiness check:
 
 ```bash
 ./scripts/verify.sh

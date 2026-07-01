@@ -12,7 +12,7 @@ Use this checklist before tagging or announcing a public template release.
 
 ## Required Gates
 
-Run the single verification command (this is what CI runs):
+Run the single local verification command:
 
 ```bash
 ./scripts/verify.sh
