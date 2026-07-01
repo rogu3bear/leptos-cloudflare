@@ -1,0 +1,62 @@
+# Realtime and WebSockets
+
+This template includes one explicit WebSocket lane so production agents do not have to infer how realtime traffic should enter the app.
+
+## Routing Contract
+
+The generated `build/_worker.js` is the Cloudflare entrypoint. It routes requests in this order:
+
+1. WebSocket upgrades for `/realtime/socket` go to the template WebSocket capability endpoint.
+2. WebSocket upgrades for any other path return `404`.
+3. Plain HTTP requests to `/realtime/socket` return `426 Upgrade Required`.
+4. Static assets, including app icons and the web manifest, go to `env.ASSETS.fetch(request)`.
+5. Everything else goes to the Leptos Worker handler for SSR, deep routes, and server functions.
+
+Do not put WebSocket handling behind Leptos client navigation. A browser may do a full document request before hydration, and Cloudflare decides whether the Worker sees the request before any Rust or Leptos router code runs.
+
+## Template Endpoint
+
+`/realtime/socket` is a capability check, not an application feature. It accepts the upgrade, sends a JSON `ready` message, and closes cleanly.
+
+Use it to verify that:
+
+- Cloudflare routes WebSocket upgrades to the Worker.
+- The `_worker.js` router keeps WebSocket traffic out of static assets.
+- CSP allows `ws:` and `wss:` through `connect-src`.
+
+## Production Rule
+
+Use the template endpoint only for simple request-scoped upgrades and local capability proof.
+
+Use Durable Objects for:
+
+- rooms
+- chat
+- presence
+- collaboration
+- fanout
+- reconnect state
+- long-lived coordination
+- any shared state across clients
+
+The durable pattern is one Durable Object per room, document, tenant, or other coordination key. The Worker should authenticate the request, derive the object ID, forward the WebSocket upgrade to that object, and let the object own connection state.
+
+## Agent Checklist
+
+Before adding realtime behavior, answer these in the PR or implementation notes:
+
+- What is the WebSocket route?
+- Is this request-scoped or shared state?
+- If shared state exists, which Durable Object owns it?
+- What authenticates the upgrade?
+- What closes idle or unauthorized sockets?
+- What happens on reconnect?
+- Which command proves the route still builds and the shim still contains the WebSocket lane?
+
+Minimum local proof:
+
+```bash
+bash ./scripts/build-edge.sh
+bun ./scripts/verify-worker-runtime.mjs
+bunx wrangler@4.83.0 deploy --dry-run
+```
