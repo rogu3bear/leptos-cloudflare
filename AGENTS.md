@@ -12,11 +12,9 @@ Read `ANCHOR.md` (product/architecture boundaries) and `NORTH_STAR.md`
 ## First Moves
 
 - Report target repo (`langual`), live branch, and dirty-tree state before edits.
-- **Trust the working tree, not git history or `README.md`.** The tracked commits
-  and README still describe a former Leptos-on-Cloudflare-Workers SSR/D1
-  template. The live tree is a different product: a CSR Trunk WASM atlas. Read
-  `Cargo.toml`, `Trunk.toml`, `index.html`, `src/main.rs`, and `src/app.rs` for
-  current truth.
+- Trust the current static-app files for product truth. Read `Cargo.toml`,
+  `Trunk.toml`, `index.html`, `src/main.rs`, and `src/app.rs` before making
+  architecture assumptions.
 - Before adding or editing language data, open `src/data/languages.rs` and follow
   the existing citation pattern. No number ships without a source.
 

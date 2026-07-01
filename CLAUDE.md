@@ -12,10 +12,9 @@ telemetry, no third-party fonts.
 Read `ANCHOR.md` (product/architecture boundaries) and `NORTH_STAR.md`
 (strategy) first when a task could broaden scope.
 
-> Truth note: the tracked git history and `README.md` still describe a former
-> Leptos-on-Cloudflare-Workers SSR/D1 *template*. That is stale. The live working
-> tree is this CSR Trunk atlas. Trust the working tree (`Cargo.toml`,
-> `Trunk.toml`, `index.html`, `src/`), not the README, for current truth.
+> Truth note: this repo is now a CSR Trunk atlas, not the former
+> Leptos-on-Cloudflare-Workers SSR/D1 template. Trust the static app files
+> (`Cargo.toml`, `Trunk.toml`, `index.html`, `src/`) for current truth.
 
 ## Core Commands
 
