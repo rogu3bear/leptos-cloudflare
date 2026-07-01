@@ -1,31 +1,32 @@
-name: Langual Static Build
+name: Template Release Readiness
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  release-readiness:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust target
-        run: rustup target add wasm32-unknown-unknown
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
 
-      - name: Install Trunk
-        run: cargo install trunk --locked
+      - uses: oven-sh/setup-bun@v2
 
-      - name: Check formatting
-        run: cargo fmt --check
+      - name: Install edge build tools (required on clean runners)
+        run: |
+          cargo install cargo-leptos --locked --version 0.3.5
+          cargo install worker-build --locked --version 0.7.5
+          cargo install cargo-audit --locked
 
-      - name: Typecheck
-        run: cargo check
-
-      - name: Build static bundle
-        run: env -u NO_COLOR trunk build --release
+      - name: Full release readiness verification
+        run: ./scripts/verify.sh
