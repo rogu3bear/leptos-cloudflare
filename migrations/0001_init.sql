@@ -1,9 +1,0 @@
-CREATE TABLE IF NOT EXISTS todos (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_todos_completed_id
-ON todos (completed, id DESC);
