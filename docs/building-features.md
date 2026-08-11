@@ -214,7 +214,11 @@ bunx wrangler d1 migrations apply leptos-cf-db --local
 
 # Production is a separate governed operation. Append the migration, update the
 # repository operation's closed schema assertions, and prepare:
-cfctl call leptos-cf.d1-migrations-apply --query config=wrangler.production.toml --json
+cfctl call leptos-cf.d1-migrations-apply \
+  --selector account_id=<verified-account-id> \
+  --selector database_id=<verified-d1-uuid> \
+  --query config=wrangler.production.toml \
+  --json
 ```
 
 ### 3b. Add a query module

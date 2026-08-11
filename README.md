@@ -115,6 +115,8 @@ bun ./scripts/write-production-config.mjs \
 
 # 7. Prepare the repository-owned migration operation and Worker deployment.
 cfctl call leptos-cf.d1-migrations-apply \
+  --selector account_id=<verified-account-id> \
+  --selector database_id=<verified-d1-uuid> \
   --query config=wrangler.production.toml \
   --profile <short-lived-profile> \
   --json

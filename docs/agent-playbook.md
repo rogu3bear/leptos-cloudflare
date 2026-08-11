@@ -172,7 +172,7 @@ Use this checklist. Work through it top to bottom; each item that applies requir
 | Prepare D1 creation plan | `cfctl call d1-create-database ... --body-stdin --json` |
 | Apply migrations (local) | `bunx wrangler d1 migrations apply leptos-cf-db --local` |
 | Derive production config | `bun scripts/write-production-config.mjs --worker ... --database ... --database-id ...` |
-| Apply reviewed migrations (remote) | `cfctl call leptos-cf.d1-migrations-apply --query config=wrangler.production.toml --json` |
+| Apply reviewed migrations (remote) | `cfctl call leptos-cf.d1-migrations-apply --selector account_id=... --selector database_id=... --query config=wrangler.production.toml --json` |
 | Execute SQL (local) | `bunx wrangler d1 execute leptos-cf-db --local --command "..."` |
 | Verify remote schema | Governed bounded schema-introspection/read capability |
 | Build (release) | `bash ./scripts/build-edge.sh` |
