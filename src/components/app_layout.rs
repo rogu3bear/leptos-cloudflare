@@ -1,32 +1,47 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-/// Shared layout component that renders a persistent header + navigation
-/// around whatever content is passed as children.
-///
-/// This is a practical, production-common pattern for shared UI (layout)
-/// that works reliably with Leptos SSR + hydration on the edge.
-/// The layout participates in the initial server render and subsequent hydration.
+/// Persistent public shell. This must remain inside `Router` so every `A`
+/// receives routing context during SSR and hydration.
 #[component]
 pub fn AppLayout(children: Children) -> impl IntoView {
     view! {
-        <header class="app-header">
-            <div class="header-inner">
-                <div class="brand-lockup">
-                    <img class="brand-mark" src="/app-icon.svg" alt="Leptos CF Starter logo"/>
-                    <span>"Leptos CF"</span>
-                </div>
+        <a class="skip-link" href="#content">"Skip to content"</a>
+        <header class="site-header">
+            <div class="site-header__inner">
+                <A href="/" attr:class="site-brand" attr:aria-label="Leptos CF home">
+                    <span class="site-brand__name">"Leptos CF"</span>
+                    <span class="site-brand__star" aria-hidden="true">"✦"</span>
+                    <span class="site-brand__note">"Leptos 0.8 · Cloudflare Workers"</span>
+                </A>
 
-                <nav class="main-nav">
-                    <A href="/" attr:class="nav-link">"Todos"</A>
-                    <A href="/about" attr:class="nav-link">"About"</A>
-                    <A href="/contact" attr:class="nav-link">"Contact"</A>
+                <nav class="site-nav" aria-label="Primary navigation">
+                    <A href="/" attr:class="site-nav__link">"Field guide"</A>
+                    <A href="/architecture" attr:class="site-nav__link">"Architecture"</A>
+                    <A href="/patterns" attr:class="site-nav__link">"Patterns"</A>
+                    <A href="/lab" attr:class="site-nav__link">"Lab"</A>
+                    <A href="/start" attr:class="site-nav__link site-nav__link--start">"Use the starter"</A>
                 </nav>
             </div>
         </header>
 
-        <main>
+        <main id="content" class="site-main">
             {children()}
         </main>
+
+        <footer class="site-footer">
+            <div class="site-footer__inner">
+                <div class="site-footer__mark" aria-hidden="true">"✦"</div>
+                <p>
+                    <strong>"Leptos CF"</strong>
+                    " is a source-derived field guide and public starter. Local proof is not deployment proof."
+                </p>
+                <nav class="site-footer__nav" aria-label="Footer navigation">
+                    <A href="/about">"About & trust"</A>
+                    <A href="/contact">"Intake lab"</A>
+                    <a href="https://github.com/rogu3bear/leptos-cloudflare">"Source ↗"</a>
+                </nav>
+            </div>
+        </footer>
     }
 }

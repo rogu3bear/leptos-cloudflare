@@ -1,0 +1,52 @@
+schema_version = 1
+
+[[operation]]
+id = "leptos-cf.d1-migrations-apply"
+title = "Apply the leptos-cf D1 migrations"
+description = "Apply the repository-bound, append-only leptos-cf D1 migration set and verify the Wrangler ledger plus closed schema assertions."
+config_template = "wrangler.toml"
+production_config = "wrangler.production.toml"
+migrations_dir = "migrations"
+database_binding = "DB"
+wrangler_version = "4.120.1"
+recovery_capability_id = "d1-time-travel-get-bookmark"
+recovery_max_age_seconds = 600
+rollback_capability_id = "d1-restore-exact-bookmark"
+
+[[operation.migration]]
+path = "migrations/0001_init.sql"
+sha256 = "sha256:edd6d324e9d14ac48be449a8e99b576c05123d46902b4dbc2d0275ae69df6b08"
+
+[[operation.migration]]
+path = "migrations/0002_session_scope.sql"
+sha256 = "sha256:f900d67bda79e0e2ec0cb8b9a3e9cb512befc733c67a2a459e63eaa0de9609b3"
+
+[[operation.migration]]
+path = "migrations/0003_contact_submissions.sql"
+sha256 = "sha256:878dc055bb79d6f845f69dd8286456c1b68ffe0e50863c822c6cf324d12e140d"
+
+[[operation.assertion]]
+kind = "table_exists"
+table = "todos"
+
+[[operation.assertion]]
+kind = "column_exists"
+table = "todos"
+column = "session_id"
+
+[[operation.assertion]]
+kind = "index_exists"
+table = "todos"
+index = "idx_todos_session_completed_id"
+
+[[operation.assertion]]
+kind = "table_exists"
+table = "contact_submissions"
+
+[[operation.assertion]]
+kind = "index_exists"
+table = "contact_submissions"
+index = "idx_contact_submissions_session_created"
+
+[[operation.assertion]]
+kind = "foreign_key_check_empty"

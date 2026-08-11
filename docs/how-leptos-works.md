@@ -6,14 +6,22 @@ This document explains the architecture of this project for developers who know 
 
 ## The Two WASMs
 
-Leptos compiles your crate twice: once for the server, once for the browser. Both are WebAssembly. Both run your component code. Neither is JavaScript.
+The release build compiles the shared application for two runtimes: browser WASM for hydration and server WASM for the Cloudflare Worker. Both run the shared component model, while small generated JavaScript modules load the WASM artifacts and provide the Worker module entrypoint.
 
 ![Compilation model](diagrams/compilation-model.svg)
 
-```
-cargo-leptos build
-  ├── lib target (--features hydrate)  →  browser WASM + JS glue
-  └── bin target (--features ssr)      →  server WASM, runs inside Cloudflare Workers
+```text
+scripts/build-edge.sh
+  ├── cargo leptos build --release
+  │     └── lib target (--features hydrate) → browser WASM + JS glue + CSS/assets
+  ├── hash-assets.mjs                      → immutable names + asset-manifest.json
+  ├── worker-build --release --features ssr
+  │     └── server Worker bundle           → build/index.js + server WASM
+  └── write-worker-shim.mjs                → build/_worker.js
+
+wrangler deploy
+  ├── main: build/_worker.js
+  └── assets: target/site
 ```
 
 This is declared in `Cargo.toml`:
@@ -26,7 +34,7 @@ lib-features = ["hydrate"]
 lib-default-features = false
 ```
 
-The lib (`crate-type = ["cdylib", "rlib"]`) compiles to the browser bundle. The bin is what `wrangler` deploys to the edge — a WASM binary that runs your Rust code inside the Cloudflare Workers runtime.
+The lib (`crate-type = ["cdylib", "rlib"]`) becomes the browser bundle under `target/site/pkg`. `worker-build` performs the deployable server build with the `ssr` feature and writes the Workers module bundle under `build/`. `scripts/write-worker-shim.mjs` then generates the configured entrypoint, `build/_worker.js`. Wrangler deploys that entrypoint and the `target/site` asset directory together; it does not deploy the ordinary Cargo bin output directly.
 
 The consequence: your components are Rust, your routing is Rust, your data types are Rust. There is no template language, no serialization boundary to manually maintain between server and client code, and no JavaScript framework sitting between your logic and the DOM.
 
@@ -49,24 +57,33 @@ async fn fetch(
     _ctx: worker::Context,
 ) -> worker::Result<axum::http::Response<axum::body::Body>> {
     let conf = get_configuration(None)...;
+    let request_identity = request_identity(&req)?;
+    let request_nonce = leptos::nonce::Nonce::new();
     let routes = generate_route_list(app::App);
-    let state = server::AppState::new(leptos_options.clone(), env);
+    let state = server::AppState::new(
+        leptos_options.clone(),
+        env,
+        request_identity.session_id.clone(),
+    );
 
     let mut router = Router::new()
-        .leptos_routes_with_context(&state, routes, || {}, {
-            move || app::shell(leptos_options.clone())
-        })
+        .layer(DefaultBodyLimit::max(MAX_SERVER_FUNCTION_BODY_BYTES))
+        .leptos_routes_with_context(&state, routes, /* nonce context */, /* shell */)
         .with_state(state);
 
-    Ok(router.call(req).await?)
+    let mut response = router.call(req).await?;
+    // Normalize unknown document routes and apply CSP, cookie, framing,
+    // content-type, referrer, and cache headers before returning.
+    apply_response_headers(&mut response, &content_security_policy, &request_identity)?;
+    Ok(response)
 }
 ```
 
-`app::shell` returns the full HTML document. `leptos_routes_with_context` registers your Leptos routes inside an axum router, which handles both SSR page requests and server function endpoints.
+This excerpt is intentionally abbreviated; the checked-in handler also rejects unsafe API methods/origins/content types and oversized server-function bodies before constructing the router. `app::shell` returns the full HTML document. `leptos_routes_with_context` registers the Leptos routes inside an Axum router, which handles both SSR page requests and server-function endpoints.
 
-### Client-Side Rendering (CSR)
+### Hydrated Client Rendering
 
-After hydration, the browser's WASM module owns the application. Subsequent navigation is handled entirely client-side by `leptos_router` — the URL changes, the correct component renders, no round-trip to the server occurs. Server functions are the only reason the client talks to the server after the initial load.
+After hydration, the browser's WASM module owns the reactive application. `leptos_router` can change the URL and render the next route without requesting another HTML document. That does not mean the browser is offline: a route can still invoke a server function, load route data, request an asset, or open the realtime lane.
 
 ### Hydration
 
@@ -83,7 +100,7 @@ pub fn hydrate() {
 
 `hydrate_body` walks the server-rendered DOM and attaches Leptos's reactive system to it — event handlers, signals, resources — without re-rendering or discarding anything. The page becomes interactive without a visible flash or layout shift.
 
-Pure CSR (no SSR) would require the browser to wait for WASM to load and render before the user sees anything. Pure SSR (no hydration) would require a server round-trip for every interaction. Hydration gives you both the fast first paint of SSR and the interactive responsiveness of CSR.
+Pure CSR (no SSR) would serve an HTML shell and require the browser to load WASM before it could construct useful UI. SSR without hydration would return useful HTML but use document requests or progressive forms for later interaction. The current template intentionally chooses SSR + hydration: useful first-response HTML plus a resumed reactive client. Pure CSR remains a separate, unshipped pattern until a named consumer needs its different loading and hosting contract. The public `/architecture` page contains the full rendering and platform decision matrices.
 
 ---
 
@@ -234,7 +251,7 @@ Code guarded with `#[cfg(feature = "hydrate")]` only compiles into the client WA
 pub fn hydrate() { ... }
 ```
 
-Everything else — the `App` component, `TodoPage`, the `api` module types, server function signatures — compiles into both. This is shared code. The `#[server]` macro handles the split: the function signature is shared, the body is `#[cfg(feature = "ssr")]`.
+Everything else — the `App` component, the field-guide pages, the lab components, the `api` module types, and server-function signatures — compiles into both. This is shared code. The `#[server]` macro handles the split: the function signature is shared, while each server-only body is guarded by `#[cfg(feature = "ssr")]`.
 
 A practical consequence: the `server` module (`src/server/`) is never referenced in client builds. You can freely call `use_context::<AppState>()` and `.db()` inside server function bodies without worrying about those types leaking to the browser — they're behind `#[cfg(feature = "ssr")]` and won't compile into the client artifact.
 
@@ -246,22 +263,19 @@ A practical consequence: the `server` module (`src/server/`) is never referenced
 
 ### First Visit
 
-1. Browser sends `GET /` to the Cloudflare edge.
-2. The Worker's `fetch` handler fires (defined in `src/lib.rs`).
-3. axum routes the request to the Leptos handler.
-4. Leptos renders `App` → `TodoPage` to HTML on the server.
-   - `TodoPage` contains a `Resource` that calls `list_todos()`.
-   - On the server, `list_todos()` executes synchronously against D1 (no HTTP call — it runs in the same WASM).
-   - The rendered HTML includes the fetched todo data serialized into the page.
-5. The Worker returns a complete HTML response.
-6. The browser paints the page immediately.
-7. The browser downloads the client WASM bundle (`pkg/leptos-cf.js` + `pkg/leptos-cf_bg.wasm`).
-8. `hydrate()` runs, attaching Leptos's reactive graph to the server-rendered DOM.
-9. The app is now interactive — signals, event handlers, and client-side routing are all live.
+1. The browser sends `GET /` to the Cloudflare edge.
+2. Workers Static Assets checks `target/site`. `/` is not an exact asset, so the request continues to the configured Worker entrypoint, `build/_worker.js`.
+3. The generated shim checks the WebSocket capability route and explicit asset fallback paths, then delegates the document request to the Rust Worker bundle.
+4. The Worker handler applies request guards, creates the cookie-scoped identity and per-response CSP nonce, then calls the Axum router.
+5. Leptos matches `/` to `HomePage` inside `AppLayout` and streams a complete HTML document. A first visit to `/lab` follows the same path and can execute its D1-backed `Resource` in the server bundle without a browser-to-API round trip.
+6. The browser can paint the useful route HTML immediately.
+7. The document references immutable `/pkg/` CSS, JavaScript, and WASM names generated from `asset-manifest.json`. Exact asset requests are served by Workers Static Assets without invoking user Worker code.
+8. `hydrate()` runs, attaching Leptos's reactive graph and event handlers to the server-rendered DOM.
+9. The app is interactive. Router navigation does not need a new HTML document, while server functions and route data can still make focused network requests.
 
 ### Subsequent Navigation
 
-The `leptos_router::Router` handles navigation client-side. When the user follows a link, the router matches the path, renders the appropriate component in WASM, and updates the DOM. No request leaves the browser.
+The `leptos_router::Router` handles navigation client-side. When the user follows a router link, it matches the path, renders the component in WASM, and updates the DOM without fetching a replacement document. Any component-level server function, data request, asset load, or realtime connection still crosses the network normally.
 
 ### Server Function Call
 
@@ -326,10 +340,18 @@ The reactivity system works identically on server and client. On the server, Lep
 | Path | What it is |
 |------|-----------|
 | `src/lib.rs` | Worker `fetch` entry point (ssr) and `hydrate()` entry point (hydrate) |
-| `src/app.rs` | Root `App` component, `shell()` HTML document wrapper, router |
+| `src/app.rs` | Root `App`, `shell()` document wrapper, hashed hydration assets, field-guide router, and wildcard |
 | `src/api.rs` | Shared types (`TodoItem`, etc.) and all `#[server]` function declarations |
-| `src/components/todo_page.rs` | The full UI: form, todo list, optimistic updates, error handling |
-| `src/server/state.rs` | `AppState` — holds `LeptosOptions` and `worker::Env` for D1 access |
+| `src/components/home_page.rs` | Public request-path field guide at `/` |
+| `src/components/architecture_page.rs` | Rendering, platform, asset-router, and ownership decisions at `/architecture` |
+| `src/components/start_page.rs` | Checked-in setup path at `/start` |
+| `src/components/patterns_page.rs` | Pattern index at `/patterns` |
+| `src/components/todo_page.rs` | D1-backed `/lab` UI: form, list, optimistic updates, and error handling |
+| `src/components/todo_detail_page.rs` | Dynamic `/lab/:id` detail route and compatibility `/todo/:id` route |
+| `src/server/state.rs` | `AppState` — holds `LeptosOptions`, `worker::Env`, and the scoped session ID |
 | `src/server/todos.rs` | D1 query implementations for list/create/toggle/delete |
 | `src/server/mod.rs` | Re-exports and the `server_error` helper |
 | `Cargo.toml` | Feature declarations and `[package.metadata.leptos]` build config |
+| `scripts/build-edge.sh` | Ordered browser build, asset hashing, Worker build, shim generation, and runtime verification |
+| `scripts/write-worker-shim.mjs` | Generates the WebSocket/asset/SSR dispatch layer at `build/_worker.js` |
+| `wrangler.toml` | Worker entrypoint, Workers Static Assets, D1, compatibility date, and observability |

@@ -34,7 +34,10 @@ pub fn server_error(error: AppError) -> ServerFnError {
     match error {
         AppError::Client(message) => ServerFnError::ServerError(message),
         AppError::Internal { context, source } => {
-            worker::console_error!("{context}: {source}");
+            // The request-level telemetry contract records the closed server
+            // function name and failure outcome. Provider, SQL, and submitted
+            // values stay out of logs by design.
+            let _ = (context, source);
             ServerFnError::ServerError("Request failed. Try again later.".to_string())
         }
     }

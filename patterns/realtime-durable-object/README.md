@@ -91,7 +91,7 @@ After adopting the pattern into the core runtime, run:
 ```bash
 bash ./scripts/build-edge.sh
 bun ./scripts/verify-worker-runtime.mjs
-bunx wrangler@4.83.0 deploy --dry-run
+bunx wrangler@4.120.1 deploy --dry-run
 ```
 
 Before claiming the repository is release-ready, run the full gate:

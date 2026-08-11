@@ -12,6 +12,8 @@ The generated `build/_worker.js` is the Cloudflare entrypoint. It routes request
 4. Static assets, including app icons and the web manifest, go to `env.ASSETS.fetch(request)`.
 5. Everything else goes to the Leptos Worker handler for SSR, deep routes, and server functions.
 
+Only step 5 enters the application telemetry contract. The shim creates a custom span with the closed boundary `ssr` or `server_function`; the Rust handler emits one closed, versioned completion event. Asset names and WebSocket route material therefore do not leak into that contract, and no raw URL, query, identifier, header, cookie, body, IP/user-agent value, D1 identity, or internal error text is logged.
+
 Do not put WebSocket handling behind Leptos client navigation. A browser may do a full document request before hydration, and Cloudflare decides whether the Worker sees the request before any Rust or Leptos router code runs.
 
 ## Template Endpoint
@@ -70,5 +72,5 @@ Minimum local proof:
 ```bash
 bash ./scripts/build-edge.sh
 bun ./scripts/verify-worker-runtime.mjs
-bunx wrangler@4.83.0 deploy --dry-run
+bunx wrangler@4.120.1 deploy --dry-run
 ```

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
 EXPECTED_WORKER_BUILD_VERSION="0.7.5"
-EXPECTED_WRANGLER_VERSION="4.83.0"
+EXPECTED_WRANGLER_VERSION="4.120.1"
 
 log() {
   printf '[bootstrap] %s\n' "$1"
@@ -81,10 +81,17 @@ cat <<'EOF'
 
 Bootstrap complete.
 
-Next steps:
-1. bunx wrangler@4.83.0 d1 create leptos-cf-db
-2. Replace the placeholder database IDs in wrangler.toml
-3. bunx wrangler@4.83.0 d1 migrations apply leptos-cf-db --local
-4. bash ./scripts/build-edge.sh
-5. bunx wrangler@4.83.0 dev --local --ip 127.0.0.1 --port 57581
+Local next steps:
+1. CI=1 bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --local
+2. bash ./scripts/build-edge.sh
+3. bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
+
+Production initialization is a separate provider transaction:
+1. Acquire a short-lived, account-scoped child token through the governed credential flow.
+2. Use cfctl to read D1 by name; if absent, prepare, approve, run, and verify d1-create-database.
+3. Derive ignored wrangler.production.toml with scripts/write-production-config.mjs using only verified Worker/D1 names and the read-back D1 UUID. Never edit the tracked template identity.
+4. Apply the exact committed migration set through the repository-bound governed D1 migration operation.
+5. Prepare, approve, run, and read back the Workers deployment through cfctl.
+
+If cfctl reports that a provider mutation is blocked, stop at that boundary. Do not bypass it with a direct Wrangler or raw API write.
 EOF

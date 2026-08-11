@@ -1,5 +1,10 @@
 pub mod about_page;
 pub mod app_layout;
+pub mod architecture_page;
 pub mod contact_page;
+pub mod home_page;
+pub mod patterns_page;
+pub mod start_page;
 pub mod todo_detail_page;
 pub mod todo_page;
+pub mod ui;

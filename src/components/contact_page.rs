@@ -1,6 +1,9 @@
 use leptos::{ev::SubmitEvent, prelude::*};
+use leptos_meta::{Meta, Title};
 
 use crate::api::SubmitContact;
+
+use super::ui::{EvidenceKind, EvidenceTag};
 
 #[component]
 pub fn ContactPage() -> impl IntoView {
@@ -65,19 +68,19 @@ pub fn ContactPage() -> impl IntoView {
     };
 
     view! {
-        <main class="page-shell">
-            <section class="hero contact-hero">
-                <p class="eyebrow">"Public contact route"</p>
-                <div class="hero-grid contact-grid">
-                    <div class="hero-copy">
-                        <h1>"Contact"</h1>
-                        <p class="hero-lede">
-                            "A bounded edge intake path with server-side validation, D1 persistence,
-                            and session-scoped abuse controls."
-                        </p>
-                    </div>
+        <Title text="Intake lab — Leptos CF"/>
+        <Meta name="description" content="A bounded same-origin D1 intake demonstration in the leptos-cf starter."/>
 
-                    <form class="composer-card contact-card" on:submit=on_submit>
+        <div class="page-shell section-stack section-stack--section">
+            <section class="contact-intro">
+                <div class="section-stack section-stack--related">
+                    <p class="eyebrow">"Field note 006 · bounded intake"</p>
+                    <h1>"Inspect an intake boundary."</h1>
+                    <p class="page-lede">"This form demonstrates server-side validation, honeypot filtering, D1 persistence, and session-scoped caps. It does not send email, a webhook, a Queue message, or an operator notification."</p>
+                    <div class="lab-proof"><EvidenceTag kind=EvidenceKind::Source/><span>"Delivery beyond local D1 is intentionally out of scope."</span></div>
+                </div>
+
+                <form class="composer-card contact-card" on:submit=on_submit>
                         <label class="composer-label" for="contact-name">"Name"</label>
                         <input
                             id="contact-name"
@@ -137,7 +140,7 @@ pub fn ContactPage() -> impl IntoView {
                             />
                         </label>
 
-                        <button class="composer-button contact-submit" type="submit" disabled=submit_disabled>
+                        <button class="composer-button contact-submit control-frame" type="submit" disabled=submit_disabled>
                             {move || {
                                 if submit_action.pending().get() {
                                     "Sending..."
@@ -146,8 +149,7 @@ pub fn ContactPage() -> impl IntoView {
                                 }
                             }}
                         </button>
-                    </form>
-                </div>
+                </form>
             </section>
 
             <Show when=move || local_error.get().is_some() || server_message().is_some()>
@@ -159,6 +161,6 @@ pub fn ContactPage() -> impl IntoView {
                     {move || local_error.get().or_else(server_message).unwrap_or_else(String::new)}
                 </div>
             </Show>
-        </main>
+        </div>
     }
 }

@@ -8,6 +8,7 @@ var
 !.env.example
 .dev.vars
 .dev.vars.*
+wrangler.production.toml
 .DS_Store
 
 # Local operator/agent strategy files. Keep these useful in private checkouts
@@ -17,5 +18,6 @@ CLAUDE.md
 NORTH_STAR.md
 ANCHOR.md
 .agents/
+.agent/
 .claude/
 *.local.md

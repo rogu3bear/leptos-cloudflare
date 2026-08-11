@@ -1,11 +1,11 @@
 {
-  "name": "Leptos CF Starter",
+  "name": "Leptos CF Field Guide",
   "short_name": "Leptos CF",
-  "description": "A full-stack Leptos starter for Cloudflare Workers.",
+  "description": "A source-derived field guide and full-stack Leptos starter for Cloudflare Workers.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4efe5",
-  "theme_color": "#171412",
+  "background_color": "#f3ead7",
+  "theme_color": "#f3ead7",
   "icons": [
     {
       "src": "/app-icon-192.png",

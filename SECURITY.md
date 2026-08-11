@@ -37,5 +37,5 @@ rg -n --hidden --glob '!target/**' --glob '!build/**' --glob '!var/**' --glob '!
   --glob '!SECURITY.md' \
   '(sk_live_|sk_test_|AKIA|ghp_|github_pat_|ca30e922|CLOUDFLARE_API_TOKEN="[A-Za-z0-9_-]{20,}"|[0-9a-f]{32})' .
 bash ./scripts/build-edge.sh
-bunx wrangler@4.83.0 deploy --dry-run
+bunx wrangler@4.120.1 deploy --dry-run
 ```

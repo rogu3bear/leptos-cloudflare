@@ -4,6 +4,7 @@ Documentation for building full-stack Rust applications on Cloudflare with Lepto
 
 ## Start Here
 
+- **[Field-guide product and design contract](../HORIZON.md)** -- The current route inventory, selected visual direction, responsive behavior, evidence language, and review state.
 - **[How Leptos Works](how-leptos-works.md)** -- The compilation model, WASM vs SSR, hydration, server functions, reactivity. Read this first if you're new to Leptos or full-stack WASM.
 
 ## Deployment Models

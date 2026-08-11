@@ -6,6 +6,8 @@ mod components;
 mod contact;
 #[cfg(feature = "ssr")]
 mod server;
+#[cfg(any(feature = "ssr", test))]
+mod telemetry;
 
 #[cfg(feature = "ssr")]
 const CONTENT_SECURITY_POLICY_HEADER: &str = "content-security-policy";
@@ -33,6 +35,24 @@ struct RequestIdentity {
 async fn fetch(
     req: worker::HttpRequest,
     env: worker::Env,
+    ctx: worker::Context,
+) -> worker::Result<axum::http::Response<axum::body::Body>> {
+    let observation = telemetry::RequestObservation::start(req.uri().path(), req.method().as_str());
+    let result = fetch_inner(req, env, ctx).await;
+    observation.finish(
+        result
+            .as_ref()
+            .ok()
+            .map(|response| response.status().as_u16()),
+        result.is_err(),
+    );
+    result
+}
+
+#[cfg(feature = "ssr")]
+async fn fetch_inner(
+    req: worker::HttpRequest,
+    env: worker::Env,
     _ctx: worker::Context,
 ) -> worker::Result<axum::http::Response<axum::body::Body>> {
     use axum::body::Body;
@@ -46,8 +66,10 @@ async fn fetch(
     let conf =
         get_configuration(None).map_err(|error| worker::Error::RustError(error.to_string()))?;
     let leptos_options = conf.leptos_options;
+    let request_path = req.uri().path().to_string();
     let request_identity = request_identity(&req)?;
-    let content_security_policy = content_security_policy(&leptos_options)?;
+    let request_nonce = leptos::nonce::Nonce::new();
+    let content_security_policy = content_security_policy(&request_nonce)?;
 
     if let Some(rejection) = reject_api_request(&req) {
         let mut response = Response::builder()
@@ -76,16 +98,50 @@ async fn fetch(
 
     let mut router = Router::new()
         .layer(DefaultBodyLimit::max(MAX_SERVER_FUNCTION_BODY_BYTES))
-        .leptos_routes_with_context(&state, routes, || {}, {
-            let leptos_options = leptos_options.clone();
-            move || app::shell(leptos_options.clone())
-        })
+        .leptos_routes_with_context(
+            &state,
+            routes,
+            {
+                let request_nonce = request_nonce.clone();
+                move || provide_context(request_nonce.clone())
+            },
+            {
+                let leptos_options = leptos_options.clone();
+                move || app::shell(leptos_options.clone())
+            },
+        )
         .with_state(state);
 
     let mut response = router.call(req).await?;
+    if !request_path.starts_with("/api/")
+        && !is_public_document_path(&request_path)
+        && response.status().is_success()
+    {
+        *response.status_mut() = StatusCode::NOT_FOUND;
+    }
     apply_response_headers(&mut response, &content_security_policy, &request_identity)?;
 
     Ok(response)
+}
+
+#[cfg(any(feature = "ssr", test))]
+fn is_public_document_path(path: &str) -> bool {
+    let normalized = path
+        .strip_suffix('/')
+        .filter(|without_trailing_slash| !without_trailing_slash.is_empty())
+        .unwrap_or(path);
+
+    matches!(
+        normalized,
+        "/" | "/start" | "/architecture" | "/patterns" | "/lab" | "/about" | "/contact"
+    ) || has_single_path_parameter(normalized, "/lab/")
+        || has_single_path_parameter(normalized, "/todo/")
+}
+
+#[cfg(any(feature = "ssr", test))]
+fn has_single_path_parameter(path: &str, prefix: &str) -> bool {
+    path.strip_prefix(prefix)
+        .is_some_and(|parameter| !parameter.is_empty() && !parameter.contains('/'))
 }
 
 #[cfg(feature = "ssr")]
@@ -206,54 +262,14 @@ fn apply_response_headers(
 
 #[cfg(feature = "ssr")]
 fn content_security_policy(
-    options: &leptos::prelude::LeptosOptions,
+    nonce: &leptos::nonce::Nonce,
 ) -> worker::Result<axum::http::header::HeaderValue> {
-    let script_sources = if cfg!(debug_assertions) {
-        "'self' 'unsafe-inline' 'wasm-unsafe-eval'".to_string()
-    } else {
-        let hash = hydration_script_hash(options);
-        format!("'self' 'sha256-{hash}' 'wasm-unsafe-eval'")
-    };
+    let script_sources = format!("'self' 'nonce-{nonce}' 'wasm-unsafe-eval'");
     let value = format!(
         "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; style-src 'self' 'unsafe-inline'; script-src {script_sources};"
     );
     axum::http::header::HeaderValue::from_str(&value)
         .map_err(|error| worker::Error::RustError(error.to_string()))
-}
-
-#[cfg(feature = "ssr")]
-fn hydration_script_hash(options: &leptos::prelude::LeptosOptions) -> String {
-    use base64::Engine;
-    use sha2::{Digest, Sha256};
-
-    let digest = Sha256::digest(hydration_script(options).as_bytes());
-    base64::engine::general_purpose::STANDARD.encode(digest)
-}
-
-#[cfg(feature = "ssr")]
-fn hydration_script(options: &leptos::prelude::LeptosOptions) -> String {
-    let js_href = asset_href(options, "js", crate::asset_hashes::JS_HASH);
-    let wasm_href = asset_href(options, "wasm", crate::asset_hashes::WASM_HASH);
-    format!(
-        "import({js_href:?}).then(mod => {{ mod.default({{ module_or_path: {wasm_href:?} }}).then(() => {{ mod.hydrate(); }}); }});"
-    )
-}
-
-#[cfg(feature = "ssr")]
-fn asset_href(options: &leptos::prelude::LeptosOptions, extension: &str, hash: &str) -> String {
-    let output_name = options.output_name.as_ref();
-    let output_name = if output_name.is_empty() {
-        env!("CARGO_PKG_NAME")
-    } else {
-        output_name
-    };
-    let pkg_dir = options.site_pkg_dir.as_ref();
-
-    if hash.is_empty() {
-        format!("/{pkg_dir}/{output_name}.{extension}")
-    } else {
-        format!("/{pkg_dir}/{output_name}.{hash}.{extension}")
-    }
 }
 
 #[cfg(feature = "ssr")]
@@ -549,5 +565,43 @@ mod tests {
             Some("https://example.com"),
             Some("https://example.com")
         ));
+    }
+
+    #[test]
+    fn public_document_paths_cover_static_dynamic_and_compatibility_routes() {
+        for path in [
+            "/",
+            "/start",
+            "/architecture",
+            "/patterns",
+            "/lab",
+            "/about",
+            "/contact",
+            "/lab/42",
+            "/todo/42",
+            "/start/",
+            "/lab/",
+        ] {
+            assert!(
+                is_public_document_path(path),
+                "expected known route: {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn public_document_paths_reject_wildcards_and_extra_segments() {
+        for path in [
+            "/outside-field-guide",
+            "/lab/42/edit",
+            "/todo/42/edit",
+            "/start/here",
+            "/lab//",
+        ] {
+            assert!(
+                !is_public_document_path(path),
+                "expected wildcard route: {path}"
+            );
+        }
     }
 }

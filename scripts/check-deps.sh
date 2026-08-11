@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
 EXPECTED_WORKER_BUILD_VERSION="0.7.5"
-EXPECTED_WRANGLER_VERSION="4.83.0"
+EXPECTED_WRANGLER_VERSION="4.120.1"
 missing=0
 
 pass() {
@@ -98,7 +98,15 @@ else
 fi
 
 if grep -q '00000000-0000-0000-0000-000000000000' "$ROOT_DIR/wrangler.toml"; then
-  warn "wrangler.toml still contains placeholder D1 IDs. Replace them after running: bunx wrangler@4.83.0 d1 create leptos-cf-db"
+  pass "tracked wrangler.toml remains provider-neutral with placeholder D1 IDs"
+else
+  fail "tracked wrangler.toml must keep placeholder D1 IDs. Derive ignored wrangler.production.toml from verified provider readback instead."
+fi
+
+if git -C "$ROOT_DIR" check-ignore -q wrangler.production.toml; then
+  pass "derived wrangler.production.toml is ignored"
+else
+  fail "wrangler.production.toml must remain gitignored"
 fi
 
 if [ "$missing" -ne 0 ]; then

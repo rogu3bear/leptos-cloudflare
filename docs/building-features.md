@@ -17,12 +17,12 @@ use leptos::prelude::*;
 #[component]
 pub fn AboutPage() -> impl IntoView {
     view! {
-        <main class="page-shell">
+        <div class="page-shell">
             <section class="panel">
                 <h1>"About"</h1>
                 <p class="hero-lede">"Built with Leptos and Cloudflare Workers."</p>
             </section>
-        </main>
+        </div>
     }
 }
 ```
@@ -57,29 +57,32 @@ pub fn App() -> impl IntoView {
         <Title text="Leptos CF Starter"/>
 
         <Router>
-            <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
-                <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
+            <AppLayout>
+              <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
+                <Route path=StaticSegment("") view=HomePage ssr=SsrMode::OutOfOrder/>
+                <Route path=StaticSegment("lab") view=TodoPage ssr=SsrMode::OutOfOrder/>
                 <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
                 <Route path=StaticSegment("contact") view=ContactPage ssr=SsrMode::OutOfOrder/>
                 <Route
-                    path=(StaticSegment("todo"), ParamSegment("id"))
+                    path=(StaticSegment("lab"), ParamSegment("id"))
                     view=TodoDetailPage
                     ssr=SsrMode::OutOfOrder
                 />
                 <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
-            </Routes>
+              </Routes>
+            </AppLayout>
         </Router>
     }
 }
 ```
 
-For dynamic segments (e.g. `/todo/:id`), use `leptos_router::ParamSegment("id")` (or a tuple path like `(StaticSegment("todo"), ParamSegment("id"))`) and read the value with `use_params_map()` from `leptos_router::hooks`.
+For dynamic segments (e.g. `/lab/:id`), use `leptos_router::ParamSegment("id")` (or a tuple path like `(StaticSegment("lab"), ParamSegment("id"))`) and read the value with `use_params_map()` from `leptos_router::hooks`.
 
-The template demonstrates this live at `/todo/:id` (see `TodoDetailPage` + the `GetTodo` server function).
+The template demonstrates this live at `/lab/:id` (see `TodoDetailPage` + the `GetTodo` server function). The old `/todo/:id` path remains compatibility-only.
 
 **Critical for Cloudflare Workers + Leptos edge:**
 
-Keep the `WildcardSegment("any")` catch-all **last**. Combined with the generated `build/_worker.js` shim, this guarantees that any deep link, browser refresh, or pre-hydration client navigation still receives a full server-rendered HTML document instead of a platform 404.
+Keep the `WildcardSegment("any")` catch-all **last**. Combined with the generated `build/_worker.js` shim, this guarantees that known deep links receive their full server-rendered document and unknown document routes receive the useful server-rendered recovery page with an HTTP `404` status instead of a bare platform response.
 
 Use `<A href=...>` (from `leptos_router::components`) for internal links. After hydration it enables fast client-side navigation; before hydration or on hard refresh it falls back to normal document requests (which the catch-all + SSR path handles correctly).
 
@@ -87,11 +90,12 @@ Example of the current recommended router shape in `src/app.rs`:
 
 ```rust
 <Routes fallback=|| view! { <NotFoundPage/> }.into_view()>
-    <Route path=StaticSegment("") view=TodoPage ssr=SsrMode::OutOfOrder/>
+    <Route path=StaticSegment("") view=HomePage ssr=SsrMode::OutOfOrder/>
+    <Route path=StaticSegment("lab") view=TodoPage ssr=SsrMode::OutOfOrder/>
     <Route path=StaticSegment("about") view=AboutPage ssr=SsrMode::OutOfOrder/>
     <Route path=StaticSegment("contact") view=ContactPage ssr=SsrMode::OutOfOrder/>
     <Route
-        path=(StaticSegment("todo"), ParamSegment("id"))
+        path=(StaticSegment("lab"), ParamSegment("id"))
         view=TodoDetailPage
         ssr=SsrMode::OutOfOrder
     />
@@ -100,6 +104,8 @@ Example of the current recommended router shape in `src/app.rs`:
 ```
 
 `SsrMode::OutOfOrder` is the recommended default for most interactive pages on this stack (best perceived performance on the edge).
+
+`AppLayout` owns the document's only `<main id="content">`; page components should return sections or divs, not nested main landmarks. Async `Resource` output must sit inside a `<Suspense>` boundary so streamed SSR markup and hydration agree.
 
 ---
 
@@ -206,8 +212,9 @@ EOF
 # Apply locally (preview database)
 bunx wrangler d1 migrations apply leptos-cf-db --local
 
-# Apply to production (after deploying)
-bunx wrangler d1 migrations apply leptos-cf-db
+# Production is a separate governed operation. Append the migration, update the
+# repository operation's closed schema assertions, and prepare:
+cfctl call leptos-cf.d1-migrations-apply --query config=wrangler.production.toml --json
 ```
 
 ### 3b. Add a query module
@@ -690,6 +697,8 @@ bunx wrangler deploy --dry-run
 ```
 
 Validates the wrangler config, asset pipeline, and Worker bundle without touching production. Run this before every real deploy to catch configuration drift.
+
+The command above proves the portable template. After deriving the ignored production config from verified provider identity, also run `bunx wrangler deploy --dry-run --config wrangler.production.toml`. Neither dry run is provider proof.
 
 ### Apply migrations locally before testing
 

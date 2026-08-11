@@ -1,4 +1,5 @@
 use leptos::{ev::MouseEvent, prelude::*};
+use leptos_meta::{Meta, Title};
 use leptos_router::{
     components::A,
     hooks::{use_navigate, use_params_map},
@@ -59,14 +60,17 @@ pub fn TodoDetailPage() -> impl IntoView {
     // This demonstrates good integration between ServerAction results and the router.
     Effect::new(move |_| {
         if delete_action.value().get().is_some() {
-            navigate("/", Default::default());
+            navigate("/lab", Default::default());
         }
     });
 
     view! {
-        <main class="page-shell">
-            <div style="margin-bottom: 1rem;">
-                <A href="/" attr:class="ghost-button">"← All todos"</A>
+        <Title text="Task detail — Leptos CF lab"/>
+        <Meta name="description" content="A dynamic route and server-function detail specimen in the leptos-cf local lab."/>
+
+        <div class="page-shell page-shell--compact section-stack section-stack--related">
+            <div>
+                <A href="/lab" attr:class="ghost-button control-frame control-frame--quiet">"← All task records"</A>
             </div>
 
             <Suspense fallback=move || view! { <LoadingState/> }>
@@ -74,10 +78,10 @@ pub fn TodoDetailPage() -> impl IntoView {
                     None => view! { <LoadingState/> }.into_any(),
                     Some(Err(e)) => view! {
                         <section class="panel error-panel">
-                            <h2>"Could not load todo"</h2>
+                            <h2>"Could not load task record"</h2>
                             <p>{e}</p>
-                            <A href="/" attr:class="ghost-button" attr:style="margin-top: 1rem; display: inline-block;">
-                                "Back to list"
+                            <A href="/lab" attr:class="ghost-button control-frame error-panel__action">
+                                "Back to the lab"
                             </A>
                         </section>
                     }.into_any(),
@@ -104,18 +108,17 @@ pub fn TodoDetailPage() -> impl IntoView {
                             <section class="panel">
                                 <div class="panel-head">
                                     <div>
-                                        <span class="pill" style="margin-bottom: 0.5rem; display: inline-block;">
+                                        <span class="pill detail-status">
                                             {status_label}
                                         </span>
-                                        <h1 style="margin: 0; font-size: 1.6rem; line-height: 1.2;">{title.clone()}</h1>
-                                        <p style="color: var(--ink-soft); margin-top: 0.25rem;">{created_at}</p>
+                                        <h1 class="detail-title">{title.clone()}</h1>
+                                        <p class="detail-date">{created_at}</p>
                                     </div>
                                 </div>
 
-                                <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap;">
+                                <div class="detail-actions">
                                     <button
-                                        class="todo-toggle"
-                                        style="min-width: 120px;"
+                                        class="todo-toggle control-frame"
                                         disabled=move || toggle_action.pending().get()
                                         on:click=on_toggle
                                     >
@@ -123,15 +126,15 @@ pub fn TodoDetailPage() -> impl IntoView {
                                     </button>
 
                                     <button
-                                        class="todo-delete"
+                                        class="todo-delete control-frame"
                                         disabled=move || delete_action.pending().get() || toggle_action.pending().get()
                                         on:click=on_delete
                                     >
-                                        "Delete todo"
+                                        "Delete task"
                                     </button>
                                 </div>
 
-                                <p style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--ink-soft);">
+                                <p class="detail-note">
                                     "This detail view is rendered via ParamSegment(\":id\") and a dedicated server function. "
                                     "After hydration, the buttons use ServerAction for optimistic updates while the resource refetches."
                                 </p>
@@ -146,7 +149,7 @@ pub fn TodoDetailPage() -> impl IntoView {
                                         // In a real implementation this would be another Resource
                                         // calling a server function. Here we just show the pattern.
                                         view! {
-                                            <div class="composer-hint" style="margin-top: 1rem;">
+                                            <div class="composer-hint detail-metadata">
                                                 "Metadata loaded independently (streaming candidate)."
                                             </div>
                                         }
@@ -155,16 +158,16 @@ pub fn TodoDetailPage() -> impl IntoView {
                             </section>
 
                             <Show when=move || delete_action.value().get().is_some()>
-                                <div class="feedback feedback--error" role="status" style="margin-top: 1rem;">
-                                    "Todo deleted. "
-                                    <A href="/">"Return to list"</A>
+                                <div class="feedback feedback--error" role="status">
+                                    "Task deleted. "
+                                    <A href="/lab">"Return to the lab"</A>
                                 </div>
                             </Show>
                         }.into_any()
                     }
                 }}
             </Suspense>
-        </main>
+        </div>
     }
 }
 
@@ -172,8 +175,9 @@ pub fn TodoDetailPage() -> impl IntoView {
 fn LoadingState() -> impl IntoView {
     view! {
         <section class="panel loading-panel">
-            <div class="skeleton skeleton--title"></div>
-            <div class="skeleton skeleton--row" style="height: 140px;"></div>
+            <div class="skeleton skeleton--title" aria-hidden="true"></div>
+            <div class="skeleton skeleton--detail" aria-hidden="true"></div>
+            <span class="visually-hidden">"Loading task detail"</span>
         </section>
     }
 }

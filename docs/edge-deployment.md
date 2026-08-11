@@ -128,15 +128,18 @@ D1 has a single primary instance where all writes land. If you enable D1 read re
 ### Creating a Database and Applying Migrations
 
 ```sh
-# Create the database
+# Portable, non-governed Wrangler path
 wrangler d1 create leptos-cf-db
 
-# Update wrangler.toml with the returned database_id, then apply migrations
-wrangler d1 migrations apply leptos-cf-db
+# Derive ignored wrangler.production.toml with the returned database_id, then apply
+bun scripts/write-production-config.mjs --worker <worker> --database leptos-cf-db --database-id <uuid>
+wrangler d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
 
 # For local development
 wrangler d1 migrations apply leptos-cf-db --local
 ```
+
+In this operator workspace, production D1 reads and writes use `cfctl`. Read by exact name first and prepare/approve `d1-create-database` only when absent. Keep tracked `wrangler.toml` portable; derive the ignored production config from the verified identity. Apply migrations only through the repository-owned operation that binds source blobs, target identity, a fresh recovery bookmark, Wrangler's ledger, and closed post-schema proof. A blocked capability is a stop condition, not a reason to fall back to direct Wrangler.
 
 The `migrations_dir` in `wrangler.toml` points to the `migrations/` directory. Wrangler tracks which migrations have been applied and runs only new ones.
 
@@ -544,7 +547,7 @@ A `wrangler.toml` for this setup:
 ```toml
 name = "my-app"
 main = "build/_worker.js"
-compatibility_date = "2026-04-22"
+compatibility_date = "2026-08-10"
 
 [build]
 command = "bash ./scripts/build-edge.sh"
@@ -552,6 +555,18 @@ command = "bash ./scripts/build-edge.sh"
 [assets]
 directory = "./target/site"
 binding = "ASSETS"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 0.1
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.01
 
 [[d1_databases]]
 binding = "DB"
@@ -633,18 +648,26 @@ No free tier. Requires Workers Paid plan.
 
 ## Deployment
 
+The public route tree is `/`, `/start`, `/architecture`, `/patterns`, `/lab`, `/about`, and `/contact`, with `/lab/:id` as the dynamic specimen. Workers Static Assets serves exact `/pkg/*` and identity-file matches before user Worker code. Requests without an asset match reach the generated Worker shim and fall through to Leptos SSR, except for the dedicated `/realtime/socket` capability route.
+
+The checked-in deployment is a Workers Static Assets application, not a Pages project. Pages Functions also execute on the Workers runtime, but introducing Pages would add another project, router, deployment, and proof contract. Keep the single Workers lane unless a named consumer justifies and owns that separation.
+
+The production configuration samples 10% of invocation logs and 1% of traces. The Worker shim creates a custom span for only the closed `ssr`/`server_function` boundary after static-asset and WebSocket exits. Rust emits one versioned completion record with only closed route/function, method, outcome, status, and duration dimensions; raw paths/queries, identifiers, headers/cookies, bodies, IP/user-agent values, D1 identifiers, and internal error text are forbidden. Sampling makes provider telemetry useful without treating every request as a required retained event. Configuration is only source intent; confirm deployed settings and representative signals through readback after an authorized apply.
+
 ```sh
 # Deploy to production
-wrangler deploy
+wrangler deploy --config wrangler.production.toml
 
 # Dry run (validate config, don't deploy)
-wrangler deploy --dry-run
+wrangler deploy --dry-run --config wrangler.production.toml
 
 # Apply database migrations in production
-wrangler d1 migrations apply leptos-cf-db
+wrangler d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
 
 # Tail live logs
 wrangler tail
 ```
 
 Apply migrations before or immediately after deploying code that depends on new schema. The migration system is append-only — never modify an existing migration file.
+
+For this operator's Cloudflare account, the commands above are explanatory only. Production mutation follows the governed `cfctl` plan/approval/run/status/readback workflow named in the repository doctrine. `wrangler.production.toml` is an input bound into those plans, never tracked source authority. Keep D1 creation, remote schema application, Worker deployment, provider readback, and live route/telemetry proof as distinct receipts.

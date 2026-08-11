@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const root = process.cwd();
-const expectedCompatibilityDate = process.env.EXPECTED_COMPATIBILITY_DATE ?? "2026-04-22";
+const expectedCompatibilityDate = process.env.EXPECTED_COMPATIBILITY_DATE ?? "2026-08-10";
 const wrangler = await readFile(join(root, "wrangler.toml"), "utf8");
 const shimPath = join(root, "build/_worker.js");
 
@@ -24,6 +24,10 @@ requireSnippet(
 requireSnippet("wrangler.toml", wrangler, "[assets]");
 requireSnippet("wrangler.toml", wrangler, 'directory = "./target/site"');
 requireSnippet("wrangler.toml", wrangler, 'binding = "ASSETS"');
+requireSnippet("wrangler.toml", wrangler, "[observability.logs]");
+requireSnippet("wrangler.toml", wrangler, "[observability.traces]");
+requireSnippet("wrangler.toml", wrangler, "head_sampling_rate = 0.1");
+requireSnippet("wrangler.toml", wrangler, "head_sampling_rate = 0.01");
 
 if (!existsSync(shimPath)) {
   throw new Error(`missing generated Worker shim: ${shimPath}`);
@@ -38,6 +42,7 @@ requireSnippet("build/_worker.js", shim, "function handleRealtimeSocket()");
 requireSnippet("build/_worker.js", shim, "new WebSocketPair()");
 requireSnippet("build/_worker.js", shim, "Template endpoint only. Use Durable Objects");
 requireSnippet("build/_worker.js", shim, "status: 426");
+requireSnippet("build/_worker.js", shim, 'headers: { Upgrade: "websocket" }');
 requireSnippet("build/_worker.js", shim, '"/pkg/"');
 requireSnippet("build/_worker.js", shim, '"/asset-manifest.json"');
 requireSnippet("build/_worker.js", shim, '"/app-icon.svg"');
@@ -46,6 +51,11 @@ requireSnippet("build/_worker.js", shim, '"/app-icon-512.png"');
 requireSnippet("build/_worker.js", shim, '"/apple-touch-icon.png"');
 requireSnippet("build/_worker.js", shim, '"/site.webmanifest"');
 requireSnippet("build/_worker.js", shim, "this.env.ASSETS.fetch(request)");
+requireSnippet("build/_worker.js", shim, "function requestBoundary(pathname)");
+requireSnippet("build/_worker.js", shim, "if (!this.ctx.tracing?.enterSpan)");
+requireSnippet("build/_worker.js", shim, "this.ctx.tracing.enterSpan(");
+requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.telemetry.schema_version", 1)');
+requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.boundary", boundary)');
 requireSnippet("build/_worker.js", shim, "super.fetch(request)");
 
-console.log("[verify-worker-runtime] Worker shim, compatibility date, Assets binding, WebSocket lane, and SSR fallback are aligned");
+console.log("[verify-worker-runtime] Worker shim, compatibility date, sampled observability, low-cardinality SSR/server-function spans, Assets binding, WebSocket lane, and SSR fallback are aligned");

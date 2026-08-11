@@ -30,7 +30,7 @@ fi
 ./scripts/with-wasm-bindgen-cli.sh cargo leptos build --release
 bun ./scripts/hash-assets.mjs
 source "$ROOT_DIR/target/asset-hashes.env"
-worker-build --release --features ssr
+./scripts/with-wasm-bindgen-cli.sh worker-build --release --features ssr
 bun ./scripts/write-worker-shim.mjs
 bun ./scripts/verify-hashed-assets.mjs
 bun ./scripts/verify-worker-runtime.mjs

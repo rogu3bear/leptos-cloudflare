@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">Leptos CF Starter app icon</title>
-  <rect width="512" height="512" rx="112" fill="#171412"/>
-  <path d="M118 266c0-91 70-165 156-165 56 0 106 31 134 80" fill="none" stroke="#F2B84B" stroke-width="48" stroke-linecap="round"/>
-  <path d="M394 246c0 91-70 165-156 165-55 0-105-30-133-78" fill="none" stroke="#5BC7D8" stroke-width="48" stroke-linecap="round"/>
-  <path d="M166 256h180" stroke="#FFF8F2" stroke-width="48" stroke-linecap="round"/>
-  <path d="M256 164v184" stroke="#FFF8F2" stroke-width="48" stroke-linecap="round"/>
-  <circle cx="400" cy="181" r="39" fill="#DF5D2F"/>
-  <circle cx="112" cy="331" r="39" fill="#1F7A52"/>
+  <title id="title">Leptos CF field guide mark</title>
+  <rect x="20" y="20" width="472" height="472" rx="56" fill="#F3EAD7" stroke="#171B18" stroke-width="20"/>
+  <path d="M92 344C150 344 140 170 236 170S300 334 420 334" fill="none" stroke="#DF4B2F" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="92" cy="344" r="28" fill="#F3EAD7" stroke="#087E98" stroke-width="18"/>
+  <circle cx="420" cy="334" r="28" fill="#F3EAD7" stroke="#B66A0A" stroke-width="18"/>
+  <path d="M256 74v116M198 132h116" stroke="#171B18" stroke-width="22" stroke-linecap="round"/>
+  <path d="M220 96l72 72M292 96l-72 72" stroke="#DF4B2F" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="19" fill="#2F7748"/>
 </svg>

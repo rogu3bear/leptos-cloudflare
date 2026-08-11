@@ -1,6 +1,6 @@
 name = "leptos-cf"
 main = "build/_worker.js"
-compatibility_date = "2026-04-22"
+compatibility_date = "2026-08-10"
 upload_source_maps = true
 
 [build]
@@ -9,6 +9,18 @@ command = "bash ./scripts/build-edge.sh"
 [assets]
 directory = "./target/site"
 binding = "ASSETS"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 0.1
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.01
 
 [[d1_databases]]
 binding = "DB"
