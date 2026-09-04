@@ -1,64 +1,19 @@
 #!/usr/bin/env bun
 
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { projectMetadata } from "./project-metadata.mjs";
 
-const root = process.cwd();
-
-async function read(relativePath) {
-  return readFile(join(root, relativePath), "utf8");
+const { cargo, leptos, referenceSite } = await projectMetadata();
+const wrangler = Bun.TOML.parse(await readFile("wrangler.toml", "utf8"));
+function require(condition, message) {
+  if (!condition) throw new Error(message);
 }
-
-function requireSnippets(label, text, snippets) {
-  const missing = snippets.filter((snippet) => !text.includes(snippet));
-  if (missing.length > 0) {
-    throw new Error(`${label} is missing required architecture contract: ${missing.join(", ")}`);
-  }
-}
-
-function rejectSnippets(label, text, snippets) {
-  const present = snippets.filter((snippet) => text.includes(snippet));
-  if (present.length > 0) {
-    throw new Error(`${label} contains a deferred architecture lane: ${present.join(", ")}`);
-  }
-}
-
-const [architecturePage, cargoToml, wranglerToml, howLeptosWorks] = await Promise.all([
-  read("src/components/architecture_page.rs"),
-  read("Cargo.toml"),
-  read("wrangler.toml"),
-  read("docs/how-leptos-works.md"),
-]);
-
-requireSnippets("public architecture page", architecturePage, [
-  "Rendering decision",
-  "SSR + hydration",
-  "Pure CSR",
-  "Current template",
-  "Platform decision",
-  "Workers Static Assets",
-  "Cloudflare Pages",
-  "Platform asset router",
-  "Exact asset match",
-  "Worker entrypoint",
-  "Leptos SSR",
-]);
-
-requireSnippets("docs/how-leptos-works.md", howLeptosWorks, [
-  "browser WASM + JS glue",
-  "worker-build",
-  "write-worker-shim.mjs",
-  "HomePage",
-  "/architecture",
-  "asset-manifest.json",
-]);
-
-rejectSnippets("Cargo.toml", cargoToml, ["leptos/csr"]);
-rejectSnippets("wrangler.toml", wranglerToml, [
-  "pages_build_output_dir",
-  'not_found_handling = "single-page-application"',
-]);
-
-console.log(
-  "[verify-architecture-contract] public decisions, build truth, and deferred CSR/Pages lanes are aligned",
-);
+require(cargo.features?.ssr?.includes("leptos/ssr"), "SSR must remain enabled through the ssr feature");
+require(cargo.features?.hydrate?.includes("leptos/hydrate"), "hydration must remain enabled through the hydrate feature");
+require(!Object.values(cargo.features ?? {}).flat().includes("leptos/csr"), "pure CSR requires a separate runtime contract");
+require(leptos["bin-features"]?.includes("ssr") && leptos["lib-features"]?.includes("hydrate"), "Leptos build must retain the SSR/hydration split");
+require(wrangler.main === "build/_worker.js", "Worker entrypoint must be the generated shim");
+require(wrangler.assets?.binding === "ASSETS" && wrangler.assets.directory.replace(/^\.\//, "") === leptos["site-root"], "Workers Assets must bind the Leptos site root");
+require(!wrangler.pages_build_output_dir && wrangler.assets.not_found_handling !== "single-page-application", "Pages and SPA fallbacks require a separate runtime contract");
+if (referenceSite) await import("./verify-field-guide.mjs");
+console.log("[verify-architecture-contract] SSR/hydration and Worker/Assets ownership passed");

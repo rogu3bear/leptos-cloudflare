@@ -6,6 +6,10 @@ created: 2026-08-05
 status: not-ready-to-grade
 ---
 
+> Historical website planning record (2026-08-05). Current source has the field-guide routes.
+> Current strategy and acceptance are `STRATEGY.md` and `docs/acceptance-criteria.md`;
+> references below to the old destructive initializer describe superseded behavior.
+
 # OKR grading readiness — `leptos-cf` website launch
 
 ## Summary

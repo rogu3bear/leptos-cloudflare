@@ -7,7 +7,12 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { projectMetadata } from "./project-metadata.mjs";
+
 const root = process.cwd();
+const { leptos, referenceSite } = await projectMetadata(root);
+const documentPath = process.env.LEPTOS_BOUNDARY_DOCUMENT_PATH ?? (referenceSite ? "/architecture" : "/");
+if (!documentPath.startsWith("/") || documentPath.startsWith("//")) throw new Error("boundary document path must be local");
 const workerEntrypoint = resolve(root, "build/_worker.js");
 const assetDirectory = resolve(root, "target/site");
 const assetManifestPath = join(assetDirectory, "asset-manifest.json");
@@ -47,7 +52,7 @@ async function waitForWorker(origin, child, logs) {
     }
 
     try {
-      const response = await fetchBoundary(`${origin}/architecture`);
+      const response = await fetchBoundary(`${origin}${documentPath}`);
       if (response.status > 0) return;
     } catch {
       // Wrangler is still starting.
@@ -75,20 +80,20 @@ async function stopWorker(child) {
 }
 
 async function runAssertions(origin) {
-  const documentResponse = await fetchBoundary(`${origin}/architecture`);
+  const documentResponse = await fetchBoundary(`${origin}${documentPath}`);
   const documentHtml = await documentResponse.text();
-  assert(documentResponse.status === 200, `/architecture returned ${documentResponse.status}`);
+  assert(documentResponse.status === 200, `${documentPath} returned ${documentResponse.status}`);
   assert(
     documentResponse.headers.get("content-type")?.includes("text/html"),
-    "/architecture did not return HTML",
+    "document did not return HTML",
   );
   assert(
-    documentHtml.includes("SSR + hydration") && documentHtml.includes("Cloudflare Pages"),
-    "/architecture lacks useful server-rendered decision content",
+    /<h1(?:\s[^>]*)?>[\s\S]*?[^\s<>][\s\S]*?<\/h1>/.test(documentHtml),
+    "document lacks a useful server-rendered heading",
   );
   assert(
-    documentHtml.includes('<main id="content"'),
-    "/architecture lacks the server-rendered main landmark",
+    /<main(?:\s[^>]*)?>/.test(documentHtml),
+    "document lacks the server-rendered main landmark",
   );
   assert(
     documentResponse.headers.get("cache-control") === "no-store",
@@ -107,6 +112,9 @@ async function runAssertions(origin) {
     "hydration script nonce does not match the response CSP",
   );
 
+  const wasmPreload = documentHtml.match(/<link\b[^>]*rel="preload"[^>]*>/g)?.find((tag) => tag.includes('as="fetch"'));
+  assert(wasmPreload?.includes('crossorigin="anonymous"'), "WASM preload must match the anonymous CORS/default fetch credentials mode");
+
   const manifestResponse = await fetchBoundary(`${origin}/asset-manifest.json`);
   assert(manifestResponse.status === 200, `asset manifest returned ${manifestResponse.status}`);
   assert(
@@ -115,7 +123,7 @@ async function runAssertions(origin) {
   );
   const manifest = await manifestResponse.json();
   assert(
-    typeof manifest.js === "string" && /^\/pkg\/leptos-cf\.[a-f0-9]{16}\.js$/.test(manifest.js),
+    typeof manifest.js === "string" && new RegExp(`^/pkg/${leptos["output-name"]}\\.[a-f0-9]{16}\\.js$`).test(manifest.js),
     `asset manifest contains an invalid JS path: ${manifest.js}`,
   );
 
@@ -131,13 +139,18 @@ async function runAssertions(origin) {
     "static asset unexpectedly received the dynamic SSR header set",
   );
 
-  const missingResponse = await fetchBoundary(`${origin}/definitely-not-a-field-guide-route`);
+  const missingResponse = await fetchBoundary(`${origin}/__runtime_boundary_missing_document__`);
   const missingHtml = await missingResponse.text();
   assert(missingResponse.status === 404, `unknown document route returned ${missingResponse.status}`);
   assert(
-    missingHtml.includes("This route is outside the field guide."),
+    /<main(?:\s[^>]*)?>/.test(missingHtml) && /<h1(?:\s[^>]*)?>/.test(missingHtml),
     "unknown document route lacks the server-rendered recovery page",
   );
+
+  if (referenceSite) {
+    assert(documentHtml.includes("SSR + hydration") && documentHtml.includes("Cloudflare Pages"), "reference architecture page lost its decision content");
+    assert(missingHtml.includes("This route is outside the field guide."), "reference recovery page lost its content");
+  }
 
   const realtimeResponse = await fetchBoundary(`${origin}/realtime/socket`);
   const realtimeBody = await realtimeResponse.text();
@@ -147,7 +160,7 @@ async function runAssertions(origin) {
     "realtime capability route did not return the expected upgrade-required response",
   );
 
-  const rejectedApiResponse = await fetchBoundary(`${origin}/api/list_todos`, {
+  const rejectedApiResponse = await fetchBoundary(`${origin}/api/__runtime_boundary__`, {
     method: "DELETE",
   });
   assert(rejectedApiResponse.status === 405, `unsafe API method returned ${rejectedApiResponse.status}`);

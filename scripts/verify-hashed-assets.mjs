@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -60,7 +61,8 @@ async function main() {
     wasm: manifest.wasm,
     css: manifest.css,
   })) {
-    if (typeof href !== "string" || !href.includes(`.${manifest.hashes[kind]}.`)) {
+    const hash = manifest.hashes?.[kind];
+    if (!/^[a-f0-9]{16}$/.test(hash ?? "") || href !== `/pkg/${outputName}.${hash}.${kind}`) {
       throw new Error(`${kind} manifest entry is not hashed: ${href}`);
     }
 
@@ -68,6 +70,13 @@ async function main() {
     if (!existsSync(filePath)) {
       throw new Error(`${kind} manifest entry does not exist: ${filePath}`);
     }
+    const actualHash = createHash("sha256").update(await readFile(filePath)).digest("hex").slice(0, 16);
+    if (actualHash !== hash) throw new Error(`${kind} filename does not match served bytes`);
+  }
+
+  const js = await readFile(join(siteRoot, manifest.js.slice(1)), "utf8");
+  if (!js.includes(`new URL("${manifest.wasm.split("/").pop()}",import.meta.url)`)) {
+    throw new Error("JavaScript does not reference the manifest WASM asset");
   }
 
   for (const extension of ["js", "wasm", "css"]) {
@@ -78,7 +87,7 @@ async function main() {
   }
 
   for (const [kind, hash] of Object.entries(manifest.hashes)) {
-    if (!generatedHashes.includes(`"${hash}"`)) {
+    if (!generatedHashes.includes(`export LEPTOS_EDGE_${kind.toUpperCase()}_HASH="${hash}"`)) {
       throw new Error(`generated asset hash env values are out of sync for ${kind}`);
     }
   }

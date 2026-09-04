@@ -5,6 +5,10 @@ created: 2026-08-05
 status: hypothesis-mode
 ---
 
+> Historical website planning record (2026-08-05). Current source has the field-guide routes.
+> Current strategy and acceptance are `STRATEGY.md` and `docs/acceptance-criteria.md`;
+> references below to the old destructive initializer describe superseded behavior.
+
 # Customer Journey Map — Rowan adopts `leptos-cf`
 
 ## Executive Summary

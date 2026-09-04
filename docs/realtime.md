@@ -1,5 +1,10 @@
 # Realtime and WebSockets
 
+For a newly named application, follow [Adopting the starter](adopting.md).
+Provider credentials and the governed/standalone distinction are in
+[Credential profiles](credentials.md). Runtime invariants remain required
+after replacing field-guide pages or labels.
+
 This template includes one explicit WebSocket lane so production agents do not have to infer how realtime traffic should enter the app.
 
 ## Routing Contract

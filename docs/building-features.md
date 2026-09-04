@@ -1,5 +1,10 @@
 # Building Features
 
+For a newly named application, follow [Adopting the starter](adopting.md).
+Provider credentials and the governed/standalone distinction are in
+[Credential profiles](credentials.md). Runtime invariants remain required
+after replacing field-guide pages or labels.
+
 A practical guide to extending this starter. The codebase is a single Rust crate that compiles to two targets: a Cloudflare Worker (SSR, `ssr` feature) and a WASM bundle hydrated in the browser (`hydrate` feature). Everything here builds on patterns already established in the todo domain — read `src/components/todo_page.rs` and `src/api.rs` before adding anything new.
 
 ---

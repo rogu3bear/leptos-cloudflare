@@ -24,20 +24,24 @@ Bootstrap installs: stable Rust toolchain, `wasm32-unknown-unknown` target, `car
 
 After bootstrap, re-run `check-deps.sh` and confirm all checks pass.
 
-Verify the Cloudflare account identity is set and the dedicated short-lived profile is usable:
+Local development needs no provider credential. For this operator workspace's production lane only, verify the Cloudflare account identity and the dedicated short-lived profile:
 
 ```bash
 test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
 cfctl auth status <short-lived-profile> --json
 ```
 
-Both commands must exit 0. Install the child token through `cfctl auth import-api-token --value-in <mode-0600-file>` or the repo's gitignored `.env`; never hardcode or print it. The account token-minter credential does not enter this repository or deployment profile.
+Both commands must exit 0. Install the child token through `cfctl auth import-api-token --account <account-id> --value-in <mode-0600-file>` or the repo's gitignored `.env`; never hardcode or print it. The account token-minter credential does not enter this repository or deployment profile.
 
 ---
 
-## 2. Bootstrap Sequence
+## 2. Governed Production Bootstrap
 
-Perform these steps in order. Do not skip or reorder.
+For credential-free local startup, use README Quick Start. For independent
+standalone production operation, use `docs/credentials.md` and the portable
+Wrangler lane. The sequence below is for this operator workspace only.
+After `scripts/init.sh`, substitute the adopted names from Cargo/Wrangler and
+the operation ID in `.cfctl/operations/d1-migrations.toml`.
 
 ### 2.1 Read or create the D1 database through cfctl
 
@@ -334,3 +338,10 @@ Rust requires explicit module registration. If you created `src/server/my_module
 **`D1 reported no rows changed during toggle/delete`**
 
 The requested todo ID does not exist. This is a logic error in the caller, not an infrastructure issue. Verify the ID being passed to `toggle_todo` or `delete_todo` exists in the database.
+
+## Application adoption
+
+Use `docs/adopting.md` for the supported name and page cutover. The initializer
+preserves application code and schema. `Cargo.toml` selects reference-site
+checks explicitly; shared runtime/security checks remain required for every
+adopter. The complete gate now requires cargo-audit; absence fails before build.

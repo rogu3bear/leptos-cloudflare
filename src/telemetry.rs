@@ -154,7 +154,15 @@ fn classify_route(path: &str) -> RouteFamily {
 }
 
 fn classify_server_function(path: &str) -> ServerFunction {
-    match path.strip_suffix('/').unwrap_or(path) {
+    let path = path.strip_suffix('/').unwrap_or(path);
+    // Leptos appends its generated decimal u64 hash to these known function
+    // names. Normalize only that suffix; arbitrary paths remain a closed Unknown.
+    let name = path.trim_end_matches(|character: char| character.is_ascii_digit());
+    let suffix = &path[name.len()..];
+    if !suffix.is_empty() && (suffix.len() > 20 || suffix.parse::<u64>().is_err()) {
+        return ServerFunction::Unknown;
+    }
+    match name {
         "/api/list_todos" => ServerFunction::ListTodos,
         "/api/create_todo" => ServerFunction::CreateTodo,
         "/api/toggle_todo" => ServerFunction::ToggleTodo,
@@ -227,6 +235,37 @@ mod tests {
             event_for("/private-value", "GET", Some(404))["route_family"],
             "not_found"
         );
+    }
+
+    #[test]
+    fn generated_function_hashes_preserve_closed_names() {
+        // Observed in the built Worker/browser server-function URLs.
+        for name in [
+            "list_todos",
+            "create_todo",
+            "toggle_todo",
+            "delete_todo",
+            "get_todo",
+            "submit_contact",
+        ] {
+            let path = format!("/api/{name}13596420688598566242");
+            let event = event_for(&path, "POST", Some(200));
+            assert_eq!(event["server_function"], name);
+            assert!(!event.to_string().contains("13596420688598566242"));
+        }
+        for path in [
+            "/api/delete_todo/123",
+            "/api/delete_todo-private123",
+            "/api/delete_todo123?secret=value",
+            "/api/delete_todo１２３",
+            "/api/delete_todo18446744073709551616",
+            "/api/private123",
+        ] {
+            assert_eq!(
+                event_for(path, "POST", Some(400))["server_function"],
+                "unknown"
+            );
+        }
     }
 
     #[test]

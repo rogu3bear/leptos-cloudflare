@@ -1,62 +1,69 @@
-# Long-Term Strategy for leptos-cf
+# Strategy: a reference implementation that survives adoption
 
-This document captures the intended evolution of the template so that future contributors (human or agent) make decisions aligned with the project's identity.
+## Diagnosis
 
-## Core Identity
+The field guide now exists: the route tree exposes Start, Architecture, Patterns,
+and bounded D1 labs. The earlier todo-first homepage diagnosis is historical.
+The current engineering challenge is making a working reference application
+survive a new name, different page content, and a subsequent application change
+without losing its runtime and release guarantees. Previous initialization
+deleted still-consumed code and verification depended on field-guide identity.
+That is an adoption boundary problem, not evidence that more features are needed.
 
-leptos-cf is a **public, agent-first reference implementation** for production-grade Leptos applications on Cloudflare Workers.
+This diagnosis is a testable hypothesis about user value. The repository has no
+measured public adoption baseline or demonstrated competitive advantage. If
+independent adopters complete these changes easily but stall elsewhere, revise
+the diagnosis using their observed failure point.
 
-Its highest value is:
-- Reproducible, local-first verification
-- Explicit, correct patterns for the edge (Workers + Assets + D1)
-- Strong teaching of Leptos' unique strengths in a real deployment context
-- Being a reliable foundation that agents can safely extend
+## Guiding policy
 
-## Strategic Principles
+Keep one inspectable Leptos/Workers reference and a small, explicit reusable
+runtime contract. Concentrate on a complete clone-to-application-change journey.
+Application code owns domain semantics; cfctl owns infrastructure operations in
+this operator workspace. Independent public adopters retain a standalone
+Wrangler path. The starter must not require the operator's home directory.
 
-1. **Two-Layer Architecture (Core + Patterns)**
-   - The main template (what `init.sh` produces) must stay minimal, stable, and extremely well-verified.
-   - Real-world complexity lives in a separate "Patterns" surface (`/patterns/` or companion materials).
-   - This prevents the core from rotting while still providing production-grade guidance.
+The source of potential advantage is that examples, runtime integration, and
+local proof can be inspected together. This is a plausible design advantage,
+not a claim of market demand or superiority over an unmeasured competitor.
 
-2. **Local > Git-dependent**
-   - All important verification must be runnable locally via clear scripts (`scripts/verify.sh` is the model).
-   - Remote CI is intentionally absent; local scripts are the release contract.
+## Coherent actions
 
-3. **Agent-Native by Default**
-   - Documentation, contracts, and verification should be written so that capable AI agents can bootstrap, extend, and maintain projects from this template with high reliability.
-   - Explicit boundaries and "why" comments are more important than clever code.
+1. Keep identity adoption non-provisioning and non-destructive. Preserve the
+   functional sample and schema until an application's consumers are replaced.
+2. Keep runtime verification independent of field-guide copy while retaining
+   explicit reference-site acceptance. Required security checks must fail
+   visibly when their prerequisites are missing.
+3. Record one renamed application build and a changed page or workflow against
+   the same runtime checks. Then test a subsequent change with an independent
+   adopter; use that evidence to decide whether any further extraction is needed.
 
-4. **Own the Upgrade Story**
-   - The biggest long-term tax in this ecosystem is major version upgrades (Leptos, worker-rs, cargo-leptos, wasm-bindgen).
-   - Future work should prioritize clear migration paths and compatibility notes.
+The repository maintainer owns source and local verification; application owners
+own their cutovers, and provider operators own credential and release decisions.
+No staffing commitment, delivery date, customer result, or provider completion
+is implied by this document. Current criteria and direct evidence are in
+`docs/acceptance-criteria.md`; review the diagnosis after the first independently
+observed adoption, or after any failure exposing a different binding constraint.
 
-5. **Tasteful Minimalism**
-   - The core starter demonstrates *how* to use Leptos well on the edge.
-   - It does not try to be a complete application or include every feature.
+## What we will not do during this repair
 
-## Current Focus Areas (as of this PR)
+- Add default auth, billing, email delivery, or a broad pattern marketplace.
+- Build a new framework or generator that strips arbitrary application domains.
+- Add an alternative account controller or parent-directory rotation dependency.
+- Require cfctl for independently operated public clones.
+- Rework the site design or add Pages/CSR/Containers without a named need.
+- Call source, local proof, publication, provider deployment, or customer success
+  interchangeable evidence.
 
-- Local verification as single source of truth
-- Better demonstration of Leptos router (layouts, dynamic routes)
-- Explicit examples of fine-grained reactivity (`Memo`) and server functions
-- Suspense / progressive loading patterns suitable for edge SSR
-- Educational comments that explain *why* certain patterns exist in this stack
+## Alternatives and challenge
 
-The `/patterns/` directory has been created as the first concrete step of the two-layer architecture. See `patterns/README.md`.
+A documentation-only field guide would reduce adoption promises but would give
+up the reusable starter outcome. A separate generated seed may eventually help,
+but would add another artifact to maintain before the variation boundary is
+proved. A batteries-included app would concentrate many unrelated requirements
+in the core. Prefer the current small contract split while testing it against
+an actual application change; switch direction if measured failures reject it.
 
-## Future Horizons
-
-- Formal Patterns Library (auth, realtime via Durable Objects, R2 uploads, background work, etc.)
-- Structured contracts / PRPs that make agent extension even more reliable
-- Living upgrade guides and compatibility matrix
-- Optional "production seed" that composes core + key patterns
-
-## Decision Filter
-
-When considering changes, ask:
-- Does this strengthen the core contracts or belong in the future Patterns layer?
-- Can a capable agent discover and correctly apply this change?
-- Does this make the template more or less trustworthy as a long-term reference?
-
-This document should be updated as the strategy evolves.
+The primary objection is that these engineering repairs may not improve public
+adoption. That remains unresolved until someone outside the implementation
+exercise tries the path. Do not turn a passing fixture into demand evidence.

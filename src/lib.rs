@@ -66,7 +66,6 @@ async fn fetch_inner(
     let conf =
         get_configuration(None).map_err(|error| worker::Error::RustError(error.to_string()))?;
     let leptos_options = conf.leptos_options;
-    let request_path = req.uri().path().to_string();
     let request_identity = request_identity(&req)?;
     let request_nonce = leptos::nonce::Nonce::new();
     let content_security_policy = content_security_policy(&request_nonce)?;
@@ -113,35 +112,9 @@ async fn fetch_inner(
         .with_state(state);
 
     let mut response = router.call(req).await?;
-    if !request_path.starts_with("/api/")
-        && !is_public_document_path(&request_path)
-        && response.status().is_success()
-    {
-        *response.status_mut() = StatusCode::NOT_FOUND;
-    }
     apply_response_headers(&mut response, &content_security_policy, &request_identity)?;
 
     Ok(response)
-}
-
-#[cfg(any(feature = "ssr", test))]
-fn is_public_document_path(path: &str) -> bool {
-    let normalized = path
-        .strip_suffix('/')
-        .filter(|without_trailing_slash| !without_trailing_slash.is_empty())
-        .unwrap_or(path);
-
-    matches!(
-        normalized,
-        "/" | "/start" | "/architecture" | "/patterns" | "/lab" | "/about" | "/contact"
-    ) || has_single_path_parameter(normalized, "/lab/")
-        || has_single_path_parameter(normalized, "/todo/")
-}
-
-#[cfg(any(feature = "ssr", test))]
-fn has_single_path_parameter(path: &str, prefix: &str) -> bool {
-    path.strip_prefix(prefix)
-        .is_some_and(|parameter| !parameter.is_empty() && !parameter.contains('/'))
 }
 
 #[cfg(feature = "ssr")]
@@ -565,43 +538,5 @@ mod tests {
             Some("https://example.com"),
             Some("https://example.com")
         ));
-    }
-
-    #[test]
-    fn public_document_paths_cover_static_dynamic_and_compatibility_routes() {
-        for path in [
-            "/",
-            "/start",
-            "/architecture",
-            "/patterns",
-            "/lab",
-            "/about",
-            "/contact",
-            "/lab/42",
-            "/todo/42",
-            "/start/",
-            "/lab/",
-        ] {
-            assert!(
-                is_public_document_path(path),
-                "expected known route: {path}"
-            );
-        }
-    }
-
-    #[test]
-    fn public_document_paths_reject_wildcards_and_extra_segments() {
-        for path in [
-            "/outside-field-guide",
-            "/lab/42/edit",
-            "/todo/42/edit",
-            "/start/here",
-            "/lab//",
-        ] {
-            assert!(
-                !is_public_document_path(path),
-                "expected wildcard route: {path}"
-            );
-        }
     }
 }

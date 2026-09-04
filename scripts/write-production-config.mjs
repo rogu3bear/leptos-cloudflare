@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { chmod, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { chmod, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -83,23 +83,34 @@ function parseArguments(args) {
   };
 }
 
-async function main() {
-  const root = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
+export async function writeProductionConfig(root, identity) {
   const sourcePath = join(root, "wrangler.toml");
   const outputPath = join(root, "wrangler.production.toml");
   const temporaryPath = `${outputPath}.${process.pid}.tmp`;
   const source = await readFile(sourcePath, "utf8");
-  const output = renderProductionConfig(source, parseArguments(process.argv.slice(2)));
+  const output = renderProductionConfig(source, identity);
 
+  let ownsTemporary = false;
   try {
-    await writeFile(temporaryPath, output, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    const temporary = await open(temporaryPath, "wx", 0o600);
+    ownsTemporary = true;
+    try {
+      await temporary.writeFile(output, "utf8");
+    } finally {
+      await temporary.close();
+    }
     await rename(temporaryPath, outputPath);
+    ownsTemporary = false;
     await chmod(outputPath, 0o600);
   } catch (error) {
-    await unlink(temporaryPath).catch(() => {});
+    if (ownsTemporary) await unlink(temporaryPath).catch(() => {});
     throw error;
   }
+}
 
+async function main() {
+  const root = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
+  await writeProductionConfig(root, parseArguments(process.argv.slice(2)));
   console.log("[production-config] wrote ignored wrangler.production.toml from the tracked Workers SSR template");
 }
 

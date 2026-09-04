@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 
 import { strict as assert } from "node:assert";
-import { readFile } from "node:fs/promises";
-import { renderProductionConfig } from "./write-production-config.mjs";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { renderProductionConfig, writeProductionConfig } from "./write-production-config.mjs";
 
 const source = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
 const identity = {
@@ -18,8 +20,8 @@ const changedLines = source
   .filter(([before, after]) => before !== after);
 
 assert.deepEqual(changedLines, [
-  ['name = "leptos-cf"', 'name = "example-production-worker"'],
-  ['database_name = "leptos-cf-db"', 'database_name = "example-production-db"'],
+  [source.match(/^name = .*$/m)[0], 'name = "example-production-worker"'],
+  [source.match(/^database_name = .*$/m)[0], 'database_name = "example-production-db"'],
   ['database_id = "00000000-0000-0000-0000-000000000000"', 'database_id = "12345678-1234-4abc-9def-1234567890ab"'],
   ['preview_database_id = "00000000-0000-0000-0000-000000000000"', 'preview_database_id = "12345678-1234-4abc-9def-1234567890ab"'],
 ]);
@@ -50,3 +52,23 @@ for (const invalid of [
 assert.throws(() => renderProductionConfig(source.replaceAll("00000000-0000-0000-0000-000000000000", identity.databaseId), identity));
 
 console.log("[test-production-config] portable template boundary and deterministic production derivation passed");
+
+const fixture = await mkdtemp(join(tmpdir(), "leptos-production-config-"));
+try {
+  const config = join(fixture, "wrangler.production.toml");
+  const collision = `${config}.${process.pid}.tmp`;
+  await writeFile(join(fixture, "wrangler.toml"), source);
+  await writeFile(config, "existing-production-config");
+  await writeFile(collision, "unowned-temporary-bytes");
+  await assert.rejects(writeProductionConfig(fixture, identity), { code: "EEXIST" });
+  assert.equal(await readFile(collision, "utf8"), "unowned-temporary-bytes");
+  assert.equal(await readFile(config, "utf8"), "existing-production-config");
+  await rm(collision);
+  await writeProductionConfig(fixture, identity);
+  assert.equal(await readFile(config, "utf8"), output);
+  assert.equal((await stat(config)).mode & 0o777, 0o600);
+  await assert.rejects(stat(collision), { code: "ENOENT" });
+  console.log("[test-production-config] exclusive-temp collision preserves unowned files; success uses mode0600");
+} finally {
+  await rm(fixture, { recursive: true, force: true });
+}

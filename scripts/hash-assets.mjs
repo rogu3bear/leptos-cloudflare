@@ -29,6 +29,24 @@ function hashedName(baseName, hash, extension) {
   return `${baseName}.${hash}.${extension}`;
 }
 
+export function fingerprintAssets(outputName, jsBuffer, wasmBuffer, cssBuffer) {
+  const wasmHash = shortHash(wasmBuffer);
+  const cssHash = shortHash(cssBuffer);
+  const hashedWasmName = hashedName(outputName, wasmHash, "wasm");
+  const hashedCssName = hashedName(outputName, cssHash, "css");
+  const source = new TextDecoder().decode(jsBuffer);
+  const wasmImport = /new URL\(\s*["']([^"']+\.wasm)["']\s*,\s*import\.meta\.url\s*\)/g;
+  if (Array.from(source.matchAll(wasmImport)).length !== 1) {
+    throw new Error("expected exactly one generated WASM import before fingerprinting JavaScript");
+  }
+  const rewrittenJs = source.replace(wasmImport, `new URL("${hashedWasmName}",import.meta.url)`);
+  // Immutable filenames identify the bytes actually served, including the WASM
+  // reference. A WASM-only change must therefore also change the JS URL.
+  const jsHash = shortHash(rewrittenJs);
+  return { rewrittenJs, jsHash, wasmHash, cssHash,
+    hashedJsName: hashedName(outputName, jsHash, "js"), hashedWasmName, hashedCssName };
+}
+
 async function removeStaleHashedFiles(pkgDir, outputName, extension) {
   const escaped = outputName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`^${escaped}\\.[a-f0-9]{16}\\.${extension}$`);
@@ -73,26 +91,15 @@ async function main() {
     }
   }
 
-  for (const extension of ["js", "wasm", "css"]) {
-    await removeStaleHashedFiles(pkgDir, outputName, extension);
-  }
-
   const jsBuffer = await readFile(jsPath);
   const wasmBuffer = await readFile(wasmPath);
   const cssBuffer = await readFile(cssPath);
+  const { rewrittenJs, jsHash, wasmHash, cssHash, hashedJsName, hashedWasmName, hashedCssName } =
+    fingerprintAssets(outputName, jsBuffer, wasmBuffer, cssBuffer);
 
-  const jsHash = shortHash(jsBuffer);
-  const wasmHash = shortHash(wasmBuffer);
-  const cssHash = shortHash(cssBuffer);
-
-  const hashedJsName = hashedName(outputName, jsHash, "js");
-  const hashedWasmName = hashedName(outputName, wasmHash, "wasm");
-  const hashedCssName = hashedName(outputName, cssHash, "css");
-
-  const rewrittenJs = new TextDecoder().decode(jsBuffer).replace(
-    /new URL\("([^"]+\.wasm)",import\.meta\.url\)/,
-    `new URL("${hashedWasmName}",import.meta.url)`,
-  );
+  for (const extension of ["js", "wasm", "css"]) {
+    await removeStaleHashedFiles(pkgDir, outputName, extension);
+  }
 
   await writeFile(join(pkgDir, hashedJsName), rewrittenJs);
   await writeFile(join(pkgDir, hashedCssName), cssBuffer);
@@ -128,7 +135,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(`[hash-assets] ${error.message}`);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error(`[hash-assets] ${error.message}`);
+    process.exit(1);
+  });
+}

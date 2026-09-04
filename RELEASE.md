@@ -20,6 +20,9 @@ Run the single local verification command:
 ./scripts/verify.sh
 ```
 
+The script requires cargo-audit and fails before compilation if it is absent.
+An audit failure propagates; there is no skipped-audit success path.
+
 The script executes the complete sequence, including the production-config, `/patterns/`, and architecture contracts, SSR unit tests, a local Worker network-boundary test, and `git diff --check` as the final hygiene step.
 
 Expected template boundary:
@@ -33,7 +36,7 @@ Provider initialization contract:
 - Apply remote schema only through the repository-owned operation that binds the clean root/HEAD, pack and ordered migration blobs, derived-config hash/identity, a fresh pre-change recovery bookmark, Wrangler ledger, and closed post-schema proof. Stop if it is blocked.
 - Treat D1 creation, schema application, Worker deployment, provider configuration readback, and authenticated route/telemetry evidence as separate proof planes.
 
-Current dependency audit notes (fresh advisory database: 2026-08-10):
+Current dependency audit notes (fresh advisory database checked 2026-09-04):
 
 - `cargo audit` reports zero known vulnerabilities.
 - `RUSTSEC-2024-0436` remains for transitive `paste 1.0.15` through
@@ -74,6 +77,25 @@ Resolved in the 2026-08-10 candidate:
 - Dynamic HTML carries a per-response CSP nonce shared by Leptos hydration and streamed resource scripts; browser proof must show no CSP or hydration errors.
 - `/lab` resource output remains inside a Suspense boundary and its create, toggle, detail, and delete flow passes in a real browser.
 - Shared realtime state remains outside the core runtime until adopted through `patterns/realtime-durable-object/`.
+
+## Adoption Contract
+
+- `scripts/test-acceptance.mjs` verifies safe local identity adoption, preserved
+  migration bytes, rejection without writes, and required security-audit outcomes.
+- `package.metadata.leptos-cf.reference-site` selects reference application text
+  checks. It is true for this public field guide and false after name adoption.
+- Every profile still verifies SSR/hydration, Worker/Assets ownership, CSP,
+  hashed assets, rendered missing-route recovery, and request guards.
+- `bun scripts/test-adopted-runtime.mjs` is the separate heavy adoption proof:
+  run it before the final canonical verifier when changing adoption or routing.
+  It builds a disposable renamed application with a replaced and added page,
+  reusing the target sequentially; rebuild the canonical artifact afterward.
+- Asset verification compares manifest hashes with final served bytes. The
+  WASM-only fingerprint fixture requires its importing JavaScript URL to change.
+- Browser acceptance covers hydration, isolated persisted CRUD, failed detail
+  mutations with retry, and preload credential agreement.
+- Follow `docs/adopting.md` before removing a sample domain.
+- Use the profile in `docs/credentials.md`; no external rotator is shipped.
 
 ## Pattern Layer Contract
 

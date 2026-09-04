@@ -1,6 +1,6 @@
 [package]
 name = "leptos-cf"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 license = "MIT"
 description = "Single-crate Leptos starter for Cloudflare Workers with D1."
@@ -57,3 +57,8 @@ bin-features = ["ssr"]
 bin-default-features = false
 lib-features = ["hydrate"]
 lib-default-features = false
+
+# The public reference site adds application-specific checks. Adoption disables
+# only these checks; runtime, security, build, and migration checks remain required.
+[package.metadata.leptos-cf]
+reference-site = true

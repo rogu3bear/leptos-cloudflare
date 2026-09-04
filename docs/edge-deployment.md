@@ -1,5 +1,10 @@
 # Edge Deployment
 
+For a newly named application, follow [Adopting the starter](adopting.md).
+Provider credentials and the governed/standalone distinction are in
+[Credential profiles](credentials.md). Runtime invariants remain required
+after replacing field-guide pages or labels.
+
 This guide covers deploying a leptos-cf application entirely on Cloudflare's edge — no origin server, no VMs, no containers. Everything runs inside Cloudflare's network.
 
 ## The Edge Model

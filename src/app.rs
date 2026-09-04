@@ -91,6 +91,13 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn NotFoundPage() -> impl IntoView {
+    // The route that actually renders recovery owns its HTTP status. Keeping
+    // another path registry in the Worker would reject newly added app routes.
+    #[cfg(feature = "ssr")]
+    if let Some(response) = use_context::<leptos_axum::ResponseOptions>() {
+        response.set_status(axum::http::StatusCode::NOT_FOUND);
+    }
+
     view! {
         <Title text="Page not found — Leptos CF"/>
         <div class="page-shell page-shell--compact">
@@ -129,8 +136,8 @@ fn EdgeHydrationScripts(options: LeptosOptions) -> impl IntoView {
     );
 
     view! {
-        <link rel="modulepreload" href=js_href.clone()/>
-        <link rel="preload" href=wasm_href.clone() r#as="fetch" r#type="application/wasm"/>
+        <link rel="modulepreload" href=js_href.clone() crossorigin="anonymous"/>
+        <link rel="preload" href=wasm_href.clone() r#as="fetch" r#type="application/wasm" crossorigin="anonymous"/>
         <script type="module" nonce=nonce>{hydration_script}</script>
     }
 }

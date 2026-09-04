@@ -34,7 +34,7 @@ bash ./scripts/build-edge.sh
 bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
 ```
 
-This path uses the checked-in placeholder D1 binding only for local development. Production initialization is a separate, reviewed provider change. The legacy `scripts/init.sh` automation is not part of the verified start path; see [De-templating](#de-templating).
+This path uses the checked-in placeholder D1 binding only for local development. Production initialization is a separate, reviewed provider change. To adopt a different name before adding provider identity, run `./scripts/init.sh my-app`. It preserves the working example and migrations; see [Adopting the starter](docs/adopting.md).
 
 ## Table of Contents
 
@@ -202,68 +202,18 @@ bunx wrangler@4.120.1 deploy --config wrangler.production.toml
 
 ## Cloudflare API Tokens
 
-Scoped tokens are the key to safe agent-assisted workflows. You create a token with exactly the permissions needed, set an expiration, and hand it to the agent. When the token expires, the agent loses access automatically.
+Local builds and local Wrangler development require no Cloudflare credentials.
+For a provider operation, use an account-scoped token limited to that operation's
+release window. In this operator workspace, cfctl owns token storage, lifecycle,
+approval, execution, and verification. The repository never receives the minter
+credential and no longer delegates rotation to an unshipped parent-directory
+script.
 
-### Creating a scoped token
-
-Go to **My Profile > API Tokens > Create Token** in the Cloudflare dashboard, or use the API.
-
-**Minimum permissions for this project:**
-
-| Permission | Access | Why |
-|---|---|---|
-| Account Settings | Read | Wrangler needs account introspection |
-| Workers Scripts | Edit | Deploy the Worker |
-| D1 | Edit | Create databases, apply migrations |
-
-**Additional permissions if you're using more of the platform:**
-
-| Permission | Access | Why |
-|---|---|---|
-| Workers R2 Storage | Edit | Create/manage R2 buckets |
-| Cloudflare Tunnel | Edit | Create and configure tunnels |
-| Workers KV Storage | Edit | Create/manage KV namespaces |
-
-### Token restrictions
-
-Always apply these:
-
-- **Expiration**: Set `expires_on` to 30-90 days. Tokens do not expire by default.
-- **Account scope**: Restrict to a single account, not "All accounts."
-- **IP filtering** (optional): Lock to your office/home IP or CI runner CIDR range.
-
-### Rotation strategy
-
-Cloudflare does not auto-rotate tokens, but the workflow is straightforward:
-
-1. **Account-owned tokens** (recommended for CI/CD and agents) support **secret rolling** via the API -- the token value regenerates while permissions stay intact.
-2. Create tokens with overlapping expiration windows: issue a new token before the old one expires, update your secrets, then let the old one die.
-3. For CI/CD, store `CLOUDFLARE_API_TOKEN` as a repository secret and rotate on a schedule.
-4. For agents, set short-lived tokens (7-30 days) and re-issue as needed. The agent only needs the token during active development sessions.
-
-**Automated rotation via the API:**
-
-```bash
-# Roll an account-owned token's secret (preserves permissions, generates new value)
-curl -X PUT "https://api.cloudflare.com/client/v4/accounts/{account_id}/tokens/{token_id}/value" \
-  -H "Authorization: Bearer {current_token}"
-```
-
-### Account-owned vs user-owned tokens
-
-- **User-owned** (`My Profile > API Tokens`): tied to your user account. If you leave the org, the token dies.
-- **Account-owned** (`Manage Account > Account API Tokens`): tied to the account, survives employee changes. **Use this for CI/CD and persistent agent access.**
-
-### Environment variables
-
-Wrangler reads these automatically:
-
-```bash
-export CLOUDFLARE_API_TOKEN="..."   # the scoped token
-export CLOUDFLARE_ACCOUNT_ID="..."  # your account ID
-```
-
-Set these before any `wrangler` command for non-interactive (agent) usage.
+Independent public adopters can use Cloudflare's scoped-token setup with the
+portable Wrangler commands below; installing cfctl is not required for that
+standalone path. Read [Credential profiles](docs/credentials.md) before choosing
+a lane. A failed governed operation never authorizes switching to the standalone
+lane in an already governed account.
 
 ---
 
@@ -343,14 +293,18 @@ bunx wrangler@4.120.1 deploy --dry-run
 
 ## De-templating
 
-Treat de-templating as an application cutover, not a deletion script. Keep the field guide visible until the replacement route tree, server mounts, assets, hydration, and deployment fallback are proven together. Then:
+Run `./scripts/init.sh <project-name>` in a fresh, provider-neutral clone to
+adopt Cargo, Worker, D1, and migration-operation identity together. It preserves
+all routes, domain code, and migration bytes, and selects application verification
+instead of reference-site copy checks. Invalid, customized, or provider-bound
+inputs are rejected before changes. Repeating the same name is a no-op.
 
-1. Replace the public page components and product language while keeping `AppLayout` inside `Router`.
-2. Retain `/lab`, `/contact`, and their D1 migrations only when the new application still consumes those contracts.
-3. Update `Cargo.toml`, `wrangler.toml`, browser identity assets, and documentation deliberately.
-4. Run `./scripts/verify.sh` against the complete tree before removing superseded paths.
-
-`scripts/init.sh` is retained for historical inspection but is not a supported or verified cutover path for the current multi-page field guide. Follow [Building Features](docs/building-features.md) and delete an old domain only after its last consumer is gone.
+Then follow [Adopting the starter](docs/adopting.md) to replace page content and
+exercise a real mutation. Runtime verification remains mandatory after branding
+and page changes. Removing a sample domain is a separate application change:
+update its routes, API, consumers, schema contract, and application tests together.
+The initializer does not delete those contracts or claim the application is ready
+for production. Run `./scripts/verify.sh` after the complete cutover.
 
 ---
 

@@ -23,3 +23,10 @@ Two paths depending on your needs:
 ## For AI Agents
 
 - **[Agent Playbook](agent-playbook.md)** -- Structured instruction set for AI coding agents (Claude Code, Codex, etc.) to bootstrap and develop on this project. Exact commands, expected outputs, file ownership map, verification protocol, and troubleshooting.
+
+## Adoption and release acceptance
+
+- [Adopting the starter](adopting.md)
+- [Credential profiles](credentials.md)
+- [Current acceptance criteria](acceptance-criteria.md)
+- [Reference website acceptance](reference-site-acceptance.md)

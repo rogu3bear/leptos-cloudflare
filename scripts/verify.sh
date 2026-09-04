@@ -9,7 +9,15 @@
 # individual scripts it calls (check-deps.sh, build-edge.sh, etc.).
 set -euo pipefail
 
+cd "$(dirname "$0")/.."
+
 echo "==> Verifying local release readiness"
+# Refuse an incomplete release before expensive compilation.
+if ! command -v cargo-audit >/dev/null 2>&1; then
+  ./scripts/security-audit.sh
+fi
+bun ./scripts/test-acceptance.mjs
+bun ./scripts/test-asset-fingerprints.mjs
 
 echo "==> 1/11 Dependency and toolchain check"
 ./scripts/check-deps.sh
@@ -31,12 +39,7 @@ cargo check --features ssr
 cargo test --features ssr
 
 echo "==> 7/11 Security audit"
-if command -v cargo-audit >/dev/null 2>&1; then
-  cargo audit
-else
-  echo "[verify] cargo-audit not found on PATH — skipping."
-  echo "         Install once with: cargo install cargo-audit --locked"
-fi
+./scripts/security-audit.sh
 
 echo "==> 8/11 Full edge build (WASM + hashed assets + worker bundle + verifiers)"
 bash ./scripts/build-edge.sh

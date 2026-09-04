@@ -33,16 +33,22 @@ pub fn TodoDetailPage() -> impl IntoView {
     let toggle_action = ServerAction::<ToggleTodo>::new();
     let delete_action = ServerAction::<DeleteTodo>::new();
 
-    // After successful toggle or delete, refresh the resource
+    // Only successful toggles invalidate the record. A failed command must
+    // leave the loaded detail available for recovery; successful deletion navigates.
     Effect::new(move |_| {
-        if toggle_action.value().get().is_some() || delete_action.value().get().is_some() {
+        if matches!(toggle_action.value().get(), Some(Ok(_))) {
             refresh.update(|n| *n += 1);
         }
     });
 
     let on_toggle = move |ev: MouseEvent| {
         ev.prevent_default();
+        if toggle_action.pending().get_untracked() || delete_action.pending().get_untracked() {
+            return;
+        }
         if let Some(Ok(item)) = todo.get() {
+            toggle_action.value().set(None);
+            delete_action.value().set(None);
             toggle_action.dispatch(ToggleTodo { id: item.id });
         }
     };
@@ -51,7 +57,12 @@ pub fn TodoDetailPage() -> impl IntoView {
 
     let on_delete = move |ev: MouseEvent| {
         ev.prevent_default();
+        if toggle_action.pending().get_untracked() || delete_action.pending().get_untracked() {
+            return;
+        }
         if let Some(Ok(item)) = todo.get() {
+            toggle_action.value().set(None);
+            delete_action.value().set(None);
             delete_action.dispatch(DeleteTodo { id: item.id });
         }
     };
@@ -59,10 +70,25 @@ pub fn TodoDetailPage() -> impl IntoView {
     // After a successful delete, navigate back to the list.
     // This demonstrates good integration between ServerAction results and the router.
     Effect::new(move |_| {
-        if delete_action.value().get().is_some() {
+        if matches!(delete_action.value().get(), Some(Ok(_))) {
             navigate("/lab", Default::default());
         }
     });
+
+    let mutation_error = move || {
+        delete_action
+            .value()
+            .get()
+            .and_then(|result| result.err())
+            .map(|_| "Could not delete task. Try again.")
+            .or_else(|| {
+                toggle_action
+                    .value()
+                    .get()
+                    .and_then(|result| result.err())
+                    .map(|_| "Could not update task. Try again.")
+            })
+    };
 
     view! {
         <Title text="Task detail — Leptos CF lab"/>
@@ -119,7 +145,7 @@ pub fn TodoDetailPage() -> impl IntoView {
                                 <div class="detail-actions">
                                     <button
                                         class="todo-toggle control-frame"
-                                        disabled=move || toggle_action.pending().get()
+                                        disabled=move || toggle_action.pending().get() || delete_action.pending().get()
                                         on:click=on_toggle
                                     >
                                         {move || if optimistic_completed() { "Mark open" } else { "Mark done" }}
@@ -157,8 +183,13 @@ pub fn TodoDetailPage() -> impl IntoView {
                                 </Suspense>
                             </section>
 
-                            <Show when=move || delete_action.value().get().is_some()>
-                                <div class="feedback feedback--error" role="status">
+                            <Show when=move || mutation_error().is_some()>
+                                <div class="feedback feedback--error" role="alert">
+                                    {move || mutation_error().unwrap_or_default()}
+                                </div>
+                            </Show>
+                            <Show when=move || matches!(delete_action.value().get(), Some(Ok(_)))>
+                                <div class="feedback" role="status">
                                     "Task deleted. "
                                     <A href="/lab">"Return to the lab"</A>
                                 </div>

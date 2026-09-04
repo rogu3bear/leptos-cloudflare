@@ -1,3 +1,7 @@
+> Historical website planning record (2026-08-05). Current source has the field-guide routes.
+> Current strategy and acceptance are `STRATEGY.md` and `docs/acceptance-criteria.md`;
+> references below to the old destructive initializer describe superseded behavior.
+
 # Prioritized Action Plan — `leptos-cf` production website
 
 ## Step 0. Source ledger
