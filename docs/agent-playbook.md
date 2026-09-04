@@ -28,10 +28,11 @@ Local development needs no provider credential. For this operator workspace's pr
 
 ```bash
 test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
-cfctl auth status <short-lived-profile> --json
+export LEPTOS_CF_PROFILE="your-short-lived-profile"
+cfctl auth status "$LEPTOS_CF_PROFILE" --json
 ```
 
-Both commands must exit 0. Install the child token through `cfctl auth import-api-token --account <account-id> --value-in <mode-0600-file>` or the repo's gitignored `.env`; never hardcode or print it. The account token-minter credential does not enter this repository or deployment profile.
+The account check and profile-status command must both exit 0. Install the child token through `cfctl auth import-api-token --account <account-id> --value-in <mode-0600-file>` or the repo's gitignored `.env`; never hardcode or print it. The account token-minter credential does not enter this repository or deployment profile.
 
 ---
 
@@ -41,7 +42,13 @@ For credential-free local startup, use README Quick Start. For independent
 standalone production operation, use `docs/credentials.md` and the portable
 Wrangler lane. The sequence below is for this operator workspace only.
 After `scripts/init.sh`, substitute the adopted names from Cargo/Wrangler and
-the operation ID in `.cfctl/operations/d1-migrations.toml`.
+the operation ID in `.cfctl/operations/d1-migrations.toml`. Read them before the
+commands below:
+
+```bash
+LEPTOS_D1_NAME=$(bun -e 'console.log(Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name)')
+LEPTOS_MIGRATION_ID=$(bun -e 'console.log(Bun.TOML.parse(await Bun.file(".cfctl/operations/d1-migrations.toml").text()).operation[0].id)')
+```
 
 ### 2.1 Read or create the D1 database through cfctl
 
@@ -52,18 +59,18 @@ cfctl workspace add "$PWD" --account "$CLOUDFLARE_ACCOUNT_ID" --json
 cfctl workspace audit --json
 cfctl call d1-list-databases \
   --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-  --query "name=leptos-cf-db" \
-  --profile <short-lived-profile> \
+  --query "name=$LEPTOS_D1_NAME" \
+  --profile "$LEPTOS_CF_PROFILE" \
   --json
 ```
 
 If no exact-name database exists, prepare a create plan:
 
 ```bash
-printf '%s' '{"name":"leptos-cf-db","read_replication":{"mode":"disabled"}}' | \
+printf '{"name":"%s","read_replication":{"mode":"disabled"}}' "$LEPTOS_D1_NAME" | \
   cfctl call d1-create-database \
     --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-    --profile <short-lived-profile> \
+    --profile "$LEPTOS_CF_PROFILE" \
     --body-stdin \
     --json
 ```
@@ -97,15 +104,26 @@ The generator rejects partial or invalid identity, an already-bound source templ
 Apply to the local SQLite replica first:
 
 ```bash
-CI=1 bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --local
+CI=1 bunx wrangler@4.120.1 d1 migrations apply "$LEPTOS_D1_NAME" --local
 ```
 
-Remote schema application is a production data write. Use `leptos-cf.d1-migrations-apply`, the repository-owned operation that binds the clean canonical root and HEAD, every ordered migration blob, operation-pack blob, production-config hash and database identity, a fresh pre-change recovery bookmark, the Wrangler migration ledger, and closed schema readback. Generic D1 import/query paths are not substitutes. If the operation fails closed, stop and resolve its contract; do not bypass it with direct Wrangler or raw SQL.
+Remote schema application is a production data write. Use the ID in `$LEPTOS_MIGRATION_ID`, the repository-owned operation that binds the clean canonical root and HEAD, every ordered migration blob, operation-pack blob, production-config hash and database identity, a fresh pre-change recovery bookmark, the Wrangler migration ledger, and closed schema readback. Generic D1 import/query paths are not substitutes. If the operation fails closed, stop and resolve its contract; do not bypass it with direct Wrangler or raw SQL.
+
+Prepare its exact plan with the same account and profile:
+
+```bash
+cfctl call "$LEPTOS_MIGRATION_ID" \
+  --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
+  --selector "database_id=<verified-d1-uuid>" \
+  --query config=wrangler.production.toml \
+  --profile "$LEPTOS_CF_PROFILE" \
+  --json
+```
 
 The migrations create the `todos` and `contact_submissions` tables plus their indexes. Verify with:
 
 ```bash
-bunx wrangler@4.120.1 d1 execute leptos-cf-db --local --command "SELECT name FROM sqlite_master WHERE type='table'"
+bunx wrangler@4.120.1 d1 execute "$LEPTOS_D1_NAME" --local --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
 Expected: `todos` and `contact_submissions` appear in the result.
@@ -131,10 +149,22 @@ This validates the `wrangler.toml` config and the build output without uploading
 ### 2.6 Deploy through a reviewed plan
 
 ```bash
-cfctl call wrangler.deploy --query config=wrangler.production.toml --json
+cfctl call wrangler.deploy \
+  --account "$CLOUDFLARE_ACCOUNT_ID" \
+  --profile "$LEPTOS_CF_PROFILE" \
+  --query "config=$PWD/wrangler.production.toml" \
+  --query "name=<verified-worker-name>" \
+  --query "message=<exact-source-and-artifact-identity-from-cfctl>" \
+  --json
 ```
 
-That command prepares a hash-bound deployment plan. After reviewing and explicitly approving the exact operation, use `cfctl plans run` and `cfctl plans status`. Then independently read back the Worker version, compatibility date, bindings, assets, routes, and observability settings and test the field-guide routes plus the `/lab` D1 write path. Plan completion is not live behavior proof.
+Use the exact Worker name from provider readback and the exact source/artifact
+identity cfctl requires for this clean source and build. A mismatched message
+fails plan preparation and reports the required value; review that value and
+repeat preparation with it. Do not reuse the
+identity after either changes. The returned plan keeps its selected profile and
+account through approval, execution, and status. That command prepares a
+hash-bound deployment plan. After reviewing and explicitly approving the exact operation, use `cfctl plans run` and `cfctl plans status`. Then independently read back the Worker version, compatibility date, bindings, assets, routes, and observability settings and test the field-guide routes plus the `/lab` D1 write path. Plan completion is not live behavior proof.
 
 ---
 
@@ -144,7 +174,7 @@ Use this checklist. Work through it top to bottom; each item that applies requir
 
 **Do you need a new database table?**
 - Create `migrations/NNNN_<name>.sql` (increment N from the last migration file).
-- Apply local: `bunx wrangler d1 migrations apply leptos-cf-db --local`
+- Apply local: `bunx wrangler d1 migrations apply "$LEPTOS_D1_NAME" --local`
 - Apply remote after the feature is complete and tested locally.
 
 **Do you need a new server function?**
@@ -174,16 +204,16 @@ Use this checklist. Work through it top to bottom; each item that applies requir
 | Full bootstrap | `./scripts/bootstrap.sh` |
 | Read D1 database inventory | `cfctl call d1-list-databases ... --json` |
 | Prepare D1 creation plan | `cfctl call d1-create-database ... --body-stdin --json` |
-| Apply migrations (local) | `bunx wrangler d1 migrations apply leptos-cf-db --local` |
+| Apply migrations (local) | `bunx wrangler d1 migrations apply "$LEPTOS_D1_NAME" --local` |
 | Derive production config | `bun scripts/write-production-config.mjs --worker ... --database ... --database-id ...` |
-| Apply reviewed migrations (remote) | `cfctl call leptos-cf.d1-migrations-apply --selector account_id=... --selector database_id=... --query config=wrangler.production.toml --json` |
-| Execute SQL (local) | `bunx wrangler d1 execute leptos-cf-db --local --command "..."` |
+| Apply reviewed migrations (remote) | Complete pinned example in §2.3; operation ID comes from the adopted pack |
+| Execute SQL (local) | `bunx wrangler d1 execute "$LEPTOS_D1_NAME" --local --command "..."` |
 | Verify remote schema | Governed bounded schema-introspection/read capability |
 | Build (release) | `bash ./scripts/build-edge.sh` |
 | Type-check SSR only | `cargo check --features ssr` |
 | Local dev server | `bunx wrangler dev --local --ip 127.0.0.1 --port 57581` |
 | Validate before deploy | `bunx wrangler deploy --dry-run` |
-| Prepare production deploy | `cfctl call wrangler.deploy --query config=wrangler.production.toml --json` |
+| Prepare production deploy | Complete account/profile/config/name/message-pinned example in §2.6 |
 | Production secrets | Governed secret capability with secret input/output sinks |
 
 ---
@@ -310,10 +340,10 @@ pub async fn my_fn() -> Result<MyType, ServerFnError> {
 For local development, apply the local migration:
 
 ```bash
-bunx wrangler d1 migrations apply leptos-cf-db --local
+bunx wrangler d1 migrations apply "$LEPTOS_D1_NAME" --local
 ```
 
-For production, inspect the provider schema and prepare the repository-owned `leptos-cf.d1-migrations-apply` operation. If it is blocked, stop and resolve that contract rather than running a direct remote command.
+For production, inspect the provider schema and prepare the repository-owned operation read from `.cfctl/operations/d1-migrations.toml`. If it is blocked, stop and resolve that contract rather than running a direct remote command.
 
 ---
 

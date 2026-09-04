@@ -66,6 +66,7 @@ The fastest path from clone to deploy is to hand the project to an AI coding age
 
 ```bash
 export CLOUDFLARE_ACCOUNT_ID="your-account-id"
+export LEPTOS_CF_PROFILE="your-short-lived-profile"
 ```
 
 Install the short-lived child in the control plane's secret store or repo-local gitignored `.env` without printing it. Secret values must not appear in prompts, argv, logs, or committed files.
@@ -90,18 +91,20 @@ cfctl doctor
 cfctl workspace add "$PWD" --account "$CLOUDFLARE_ACCOUNT_ID" --json
 cfctl workspace audit --json
 
-# 3. Read D1 by name using the dedicated short-lived profile
+# 3. Read adopted identities from this checkout, then query with the pinned profile
+LEPTOS_D1_NAME=$(bun -e 'console.log(Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name)')
+LEPTOS_MIGRATION_ID=$(bun -e 'console.log(Bun.TOML.parse(await Bun.file(".cfctl/operations/d1-migrations.toml").text()).operation[0].id)')
 cfctl call d1-list-databases \
   --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-  --query "name=leptos-cf-db" \
-  --profile <short-lived-profile> \
+  --query "name=$LEPTOS_D1_NAME" \
+  --profile "$LEPTOS_CF_PROFILE" \
   --json
 
 # 4. If absent, create a preview plan (this does not mutate Cloudflare)
-printf '%s' '{"name":"leptos-cf-db","read_replication":{"mode":"disabled"}}' | \
+printf '{"name":"%s","read_replication":{"mode":"disabled"}}' "$LEPTOS_D1_NAME" | \
   cfctl call d1-create-database \
     --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-    --profile <short-lived-profile> \
+    --profile "$LEPTOS_CF_PROFILE" \
     --body-stdin \
     --json
 
@@ -114,14 +117,29 @@ bun ./scripts/write-production-config.mjs \
   --database-id <verified-d1-uuid>
 
 # 7. Prepare the repository-owned migration operation and Worker deployment.
-cfctl call leptos-cf.d1-migrations-apply \
-  --selector account_id=<verified-account-id> \
-  --selector database_id=<verified-d1-uuid> \
+cfctl call "$LEPTOS_MIGRATION_ID" \
+  --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
+  --selector "database_id=<verified-d1-uuid>" \
   --query config=wrangler.production.toml \
-  --profile <short-lived-profile> \
+  --profile "$LEPTOS_CF_PROFILE" \
   --json
-cfctl call wrangler.deploy --query config=wrangler.production.toml --json
+cfctl call wrangler.deploy \
+  --account "$CLOUDFLARE_ACCOUNT_ID" \
+  --profile "$LEPTOS_CF_PROFILE" \
+  --query "config=$PWD/wrangler.production.toml" \
+  --query "name=<verified-worker-name>" \
+  --query "message=<exact-source-and-artifact-identity-from-cfctl>" \
+  --json
 ```
+
+Use the exact Worker name from provider readback and the exact source/artifact
+identity required by cfctl for this clean candidate and build; do not invent that
+message or reuse it after source or artifact changes. A mismatched message fails
+plan preparation and reports the required value; review that value and repeat
+preparation with it. Each returned plan retains
+its pinned profile and account through `plans approve/run/status`; do not switch
+credentials between preparation and execution. The migration ID above is read
+from the operation pack because `init.sh` changes it along with the project name.
 
 The placeholder `00000000-0000-0000-0000-000000000000` IDs in tracked `wrangler.toml` are a permanent fail-closed template boundary. Do not replace them. `scripts/write-production-config.mjs` validates provider-read identities and changes only the Worker name, D1 name, and the two D1 UUID fields while preserving the Workers SSR, Assets, compatibility, and observability contract. Its output, `wrangler.production.toml`, is root-level, mode `0600`, and gitignored. A plan preview, local build, or Wrangler dry run is not provider proof.
 
@@ -245,7 +263,7 @@ Once ignored `wrangler.production.toml` has been derived from provider-read iden
 bunx wrangler@4.120.1 deploy --config wrangler.production.toml
 ```
 
-That command documents the portable starter path. In this operator workspace, production changes use the repository's governed `cfctl` plan/approval/run/status/readback lane; a successful local build or Wrangler dry run is not deployment proof. `cfctl call wrangler.deploy --query config=wrangler.production.toml --json` prepares the deployment plan but does not authorize or execute it.
+That command documents the portable starter path. In this operator workspace, production changes use the repository's governed `cfctl` plan/approval/run/status/readback lane; a successful local build or Wrangler dry run is not deployment proof. Use the complete account/profile/name/config/message-pinned deployment example in [the governed lifecycle](#then-tell-it-what-to-do). It prepares a plan and does not authorize or execute it.
 
 Wrangler runs the configured build command:
 
