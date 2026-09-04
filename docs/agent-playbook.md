@@ -29,10 +29,21 @@ Local development needs no provider credential. For this operator workspace's pr
 ```bash
 test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
 export LEPTOS_CF_PROFILE="your-short-lived-profile"
+cfctl auth import-api-token \
+  --profile "$LEPTOS_CF_PROFILE" \
+  --account "$CLOUDFLARE_ACCOUNT_ID" \
+  --value-in "<mode-0600-token-file>" --json
 cfctl auth status "$LEPTOS_CF_PROFILE" --json
 ```
 
-The account check and profile-status command must both exit 0. Install the child token through `cfctl auth import-api-token --account <account-id> --value-in <mode-0600-file>` or the repo's gitignored `.env`; never hardcode or print it. The account token-minter credential does not enter this repository or deployment profile.
+If the short-lived child is already installed, omit import and check its status.
+Require `ok: true`, `result.credential_available: true`, `result.profile.id`
+equal to `$LEPTOS_CF_PROFILE`, and `result.profile.account_id` equal to
+`$CLOUDFLARE_ACCOUNT_ID`. Exit 0 alone does not establish credential availability;
+this local check does not establish provider permissions. Governed calls use
+cfctl's selected secret store. Repo-local `.env` credentials belong only to the
+separate standalone Wrangler lane. Never hardcode or print the token. The account
+token-minter credential does not enter this repository or deployment profile.
 
 ---
 
@@ -67,7 +78,7 @@ cfctl call d1-list-databases \
 If no exact-name database exists, prepare a create plan:
 
 ```bash
-printf '{"name":"%s","read_replication":{"mode":"disabled"}}' "$LEPTOS_D1_NAME" | \
+bun -e 'const name = Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name; console.log(JSON.stringify({name, read_replication: {mode: "disabled"}}))' | \
   cfctl call d1-create-database \
     --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
     --profile "$LEPTOS_CF_PROFILE" \

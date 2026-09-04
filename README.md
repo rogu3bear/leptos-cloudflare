@@ -69,7 +69,23 @@ export CLOUDFLARE_ACCOUNT_ID="your-account-id"
 export LEPTOS_CF_PROFILE="your-short-lived-profile"
 ```
 
-Install the short-lived child in the control plane's secret store or repo-local gitignored `.env` without printing it. Secret values must not appear in prompts, argv, logs, or committed files.
+Install the short-lived child in cfctl's secret store under that exact profile:
+
+```bash
+cfctl auth import-api-token \
+  --profile "$LEPTOS_CF_PROFILE" \
+  --account "$CLOUDFLARE_ACCOUNT_ID" \
+  --value-in "<mode-0600-token-file>" --json
+cfctl auth status "$LEPTOS_CF_PROFILE" --json
+```
+
+Before continuing, require `ok: true`, `result.credential_available: true`,
+`result.profile.id` equal to `$LEPTOS_CF_PROFILE`, and
+`result.profile.account_id` equal to `$CLOUDFLARE_ACCOUNT_ID`. Exit 0 alone does
+not establish credential availability, and this local check does not establish
+provider permissions. The governed lane uses cfctl's selected secret store;
+repo-local `.env` credentials belong to the separate standalone Wrangler lane.
+Secret values must not appear in prompts, argv, logs, or committed files.
 
 ### Then tell it what to do
 
@@ -101,7 +117,7 @@ cfctl call d1-list-databases \
   --json
 
 # 4. If absent, create a preview plan (this does not mutate Cloudflare)
-printf '{"name":"%s","read_replication":{"mode":"disabled"}}' "$LEPTOS_D1_NAME" | \
+bun -e 'const name = Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name; console.log(JSON.stringify({name, read_replication: {mode: "disabled"}}))' | \
   cfctl call d1-create-database \
     --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
     --profile "$LEPTOS_CF_PROFILE" \
