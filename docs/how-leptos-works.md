@@ -46,40 +46,7 @@ The consequence: your components are Rust, your routing is Rust, your data types
 
 When a request arrives at the Worker, Leptos renders your `App` component to HTML on the server. The response is a complete HTML document — the browser can paint it immediately without waiting for WASM to load.
 
-The entry point is `src/lib.rs`:
-
-```rust
-#[cfg(feature = "ssr")]
-#[worker::event(fetch)]
-async fn fetch(
-    req: worker::HttpRequest,
-    env: worker::Env,
-    _ctx: worker::Context,
-) -> worker::Result<axum::http::Response<axum::body::Body>> {
-    let conf = get_configuration(None)...;
-    let request_identity = request_identity(&req)?;
-    let request_nonce = leptos::nonce::Nonce::new();
-    let routes = generate_route_list(app::App);
-    let state = server::AppState::new(
-        leptos_options.clone(),
-        env,
-        request_identity.session_id.clone(),
-    );
-
-    let mut router = Router::new()
-        .layer(DefaultBodyLimit::max(MAX_SERVER_FUNCTION_BODY_BYTES))
-        .leptos_routes_with_context(&state, routes, /* nonce context */, /* shell */)
-        .with_state(state);
-
-    let mut response = router.call(req).await?;
-    // Normalize unknown document routes and apply CSP, cookie, framing,
-    // content-type, referrer, and cache headers before returning.
-    apply_response_headers(&mut response, &content_security_policy, &request_identity)?;
-    Ok(response)
-}
-```
-
-This excerpt is intentionally abbreviated; the checked-in handler also rejects unsafe API methods/origins/content types and oversized server-function bodies before constructing the router. `app::shell` returns the full HTML document. `leptos_routes_with_context` registers the Leptos routes inside an Axum router, which handles both SSR page requests and server-function endpoints.
+The Worker event in `src/lib.rs` records request completion and delegates to `src/edge/mod.rs`. The edge handler applies method/origin/content-type/body checks, creates session/nonce context, and mounts the application routes through `leptos_routes_with_context`. The document owner in `src/edge/shell.rs` returns the full HTML shell and its fingerprinted hydration assets. Keeping this wiring out of `src/app.rs` lets a page-route change stay with the application.
 
 ### Hydrated Client Rendering
 
@@ -119,12 +86,7 @@ From `src/api.rs`:
 pub async fn list_todos() -> Result<TodosResponse, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        SendWrapper::new(async move {
-            crate::server::todos::list_todos()
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::todos::list_todos()).await
     }
 
     #[cfg(not(feature = "ssr"))]
@@ -136,7 +98,7 @@ pub async fn list_todos() -> Result<TodosResponse, ServerFnError> {
 
 `#[server(ListTodos)]` registers a route at `/api/list_todos` (the name becomes the URL segment). The function signature — parameters in, `Result<T, ServerFnError>` out — is the complete contract. Leptos serializes the arguments as the POST body and deserializes the response. Both sides use the same Rust type; there is no manual JSON wiring.
 
-The `TodosResponse`, `TodoItem`, and other types in `src/api.rs` are shared — they compile into both the server and client WASMs. The `serde` derives handle (de)serialization automatically.
+The `TodosResponse`, `TodoItem`, and other domain types in `src/todos.rs` and `src/contact_fields.rs` (reexported by `src/api.rs`) are shared — they compile into both the server and client WASMs. The `serde` derives handle (de)serialization automatically.
 
 ### `ServerAction` for Mutations
 
@@ -201,7 +163,7 @@ Leptos server functions require their futures to be `Send` (they may be polled a
 
 `SendWrapper<T>` from the `send_wrapper` crate lies to the compiler: it wraps a non-`Send` type and asserts it is `Send`, enforcing at runtime that it is only accessed from the thread it was created on. Because Workers is single-threaded, this assertion never trips.
 
-Every server function in `src/api.rs` uses this pattern:
+Server functions in `src/api.rs` delegate to `crate::server::run`, which owns this pattern:
 
 ```rust
 send_wrapper::SendWrapper::new(async move {
@@ -340,8 +302,9 @@ The reactivity system works identically on server and client. On the server, Lep
 | Path | What it is |
 |------|-----------|
 | `src/lib.rs` | Worker `fetch` entry point (ssr) and `hydrate()` entry point (hydrate) |
-| `src/app.rs` | Root `App`, `shell()` document wrapper, hashed hydration assets, field-guide router, and wildcard |
-| `src/api.rs` | Shared types (`TodoItem`, etc.) and all `#[server]` function declarations |
+| `src/app.rs` | Root `App`, field-guide router, and wildcard |
+| `src/edge/` | HTTP policy, session identity, response headers, router wiring and SSR document shell |
+| `src/api.rs` | Domain-type reexports and stable `#[server]` function declarations |
 | `src/components/home_page.rs` | Public request-path field guide at `/` |
 | `src/components/architecture_page.rs` | Rendering, platform, asset-router, and ownership decisions at `/architecture` |
 | `src/components/start_page.rs` | Checked-in setup path at `/start` |

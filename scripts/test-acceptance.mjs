@@ -18,10 +18,10 @@ function success(result) {
 try {
   const fixture = join(temporary, "app");
   await mkdir(fixture);
-  for (const path of ["Cargo.toml", "Cargo.lock", "wrangler.toml", ".cfctl", "src", "scripts", "docs", "migrations"]) {
+  for (const path of ["Cargo.toml", "Cargo.lock", "wrangler.toml", "pages", ".cfctl", "src", "scripts", "docs", "migrations"]) {
     await cp(join(root, path), join(fixture, path), { recursive: true });
   }
-  const identityFiles = ["Cargo.toml", "Cargo.lock", "wrangler.toml", ".cfctl/operations/d1-migrations.toml"];
+  const identityFiles = ["Cargo.toml", "Cargo.lock", "wrangler.toml", ".cfctl/operations/d1-migrations.toml", "pages/wrangler.toml"];
   const snapshot = () => Promise.all(identityFiles.map((path) => readFile(join(fixture, path), "utf8")));
   const original = await snapshot();
   const oldName = Bun.TOML.parse(original[0]).package.name;
@@ -33,6 +33,11 @@ try {
     await writeFile(referencePage, referenceBefore);
   }
   assert.equal((await adoptProject(fixture, oldName)).changed, false);
+  await writeFile(join(fixture, "pages/wrangler.toml"), original[4].replaceAll("00000000-0000-0000-0000-000000000000", "12345678-1234-4abc-9def-1234567890ab"));
+  const boundPages = await snapshot();
+  await assert.rejects(adoptProject(fixture, "sample-app"), /Pages identity/);
+  assert.deepEqual(await snapshot(), boundPages);
+  await writeFile(join(fixture, "pages/wrangler.toml"), original[4]);
   await writeFile(join(fixture, "wrangler.toml"), original[2].replace(`name = "${oldName}"`, 'name = "incoherent-worker"'));
   const incoherent = await snapshot();
   await assert.rejects(adoptProject(fixture, "sample-app"), /already customized/);
@@ -77,6 +82,8 @@ try {
   assert.equal(Bun.TOML.parse(after[2]).name, "sample-app");
   assert.equal(Bun.TOML.parse(after[2]).d1_databases[0].database_name, "sample-app-db");
   assert.equal(Bun.TOML.parse(after[3]).operation[0].id, "sample-app.d1-migrations-apply");
+  assert.equal(Bun.TOML.parse(after[4]).name, "sample-app");
+  assert.equal(Bun.TOML.parse(after[4]).d1_databases[0].database_name, "sample-app-db");
   // An adopter can replace public copy and remove the reference architecture page
   // without changing or disabling the runtime contract checks.
   await writeFile(join(fixture, "src/components/architecture_page.rs"), "// replaced application page\n");

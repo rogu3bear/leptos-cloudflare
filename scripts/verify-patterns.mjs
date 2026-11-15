@@ -8,26 +8,7 @@ const root = process.cwd();
 const patternsDir = join(root, "patterns");
 const rootReadmePath = join(patternsDir, "README.md");
 
-const rootPathPrefixes = [
-  "AGENTS.md",
-  "ANCHOR.md",
-  "NORTH_STAR.md",
-  "README.md",
-  "RELEASE.md",
-  "SECURITY.md",
-  "CONTRIBUTING.md",
-  "STRATEGY.md",
-  "Cargo.toml",
-  "Cargo.lock",
-  "wrangler.toml",
-  "assets/",
-  "docs/",
-  "migrations/",
-  "patterns/",
-  "scripts/",
-  "src/",
-  "style/",
-];
+
 
 function requireSnippet(label, text, snippet) {
   if (!text.includes(snippet)) {
@@ -45,9 +26,11 @@ function isExternalLink(pathText) {
 
 function isRootPathReference(pathText) {
   const normalized = pathText.replace(/^\.\//, "");
-  return rootPathPrefixes.some(
-    (prefix) => normalized === prefix.replace(/\/$/, "") || normalized.startsWith(prefix),
-  );
+  // Generated output is proved by the build/runtime gate, not source links.
+  if (/^(build|target|var|node_modules)\//.test(normalized)) return false;
+  return /^[A-Za-z0-9_.-]+\.(?:md|toml|lock|json)$/.test(normalized)
+    || /^(package\.json|bun\.lock)$/.test(normalized)
+    || /^[A-Za-z0-9_.-]+\//.test(normalized);
 }
 
 function resolveReference(fromFile, pathText, fromInlineCode = false) {
@@ -56,6 +39,9 @@ function resolveReference(fromFile, pathText, fromInlineCode = false) {
     return null;
   }
 
+  if (fromInlineCode && !withoutAnchor.includes("/") && existsSync(resolve(dirname(fromFile), withoutAnchor))) {
+    return resolve(dirname(fromFile), withoutAnchor);
+  }
   if (fromInlineCode && isRootPathReference(withoutAnchor)) {
     return resolve(root, withoutAnchor.replace(/^\.\//, ""));
   }

@@ -5,21 +5,7 @@ import { existsSync } from "node:fs";
 import { readdirSync } from "node:fs";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-
-function runOrThrow(cmd, args) {
-  const proc = Bun.spawnSync([cmd, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    cwd: process.cwd(),
-  });
-
-  if (proc.exitCode !== 0) {
-    const stderr = new TextDecoder().decode(proc.stderr).trim();
-    throw new Error(stderr || `${cmd} exited with code ${proc.exitCode}`);
-  }
-
-  return new TextDecoder().decode(proc.stdout);
-}
+import { projectMetadata } from "./project-metadata.mjs";
 
 function shortHash(buffer) {
   return createHash("sha256").update(buffer).digest("hex").slice(0, 16);
@@ -59,27 +45,10 @@ async function removeStaleHashedFiles(pkgDir, outputName, extension) {
 }
 
 async function main() {
-  const metadata = JSON.parse(
-    runOrThrow("cargo", ["metadata", "--no-deps", "--format-version", "1"]),
-  );
-  const workspaceRoot = metadata.workspace_root;
-  const manifestPath = join(workspaceRoot, "Cargo.toml");
-  const rootPackage = metadata.packages.find(
-    (pkg) => pkg.manifest_path === manifestPath,
-  );
-
-  if (!rootPackage) {
-    throw new Error("failed to resolve root package metadata");
-  }
-
-  const leptos = rootPackage.metadata?.leptos;
-  if (!leptos) {
-    throw new Error("missing package.metadata.leptos");
-  }
-
+  const { root: workspaceRoot, leptos, assetPrefix, paths } = await projectMetadata();
   const outputName = leptos["output-name"];
-  const siteRoot = join(workspaceRoot, leptos["site-root"]);
-  const pkgDir = join(siteRoot, leptos["site-pkg-dir"]);
+  const siteRoot = paths.site;
+  const pkgDir = paths.pkg;
 
   const jsPath = join(pkgDir, `${outputName}.js`);
   const wasmPath = join(pkgDir, `${outputName}.wasm`);
@@ -109,9 +78,9 @@ async function main() {
   await rm(cssPath, { force: true });
 
   const assetManifest = {
-    js: `/pkg/${hashedJsName}`,
-    wasm: `/pkg/${hashedWasmName}`,
-    css: `/pkg/${hashedCssName}`,
+    js: `${assetPrefix}${hashedJsName}`,
+    wasm: `${assetPrefix}${hashedWasmName}`,
+    css: `${assetPrefix}${hashedCssName}`,
     hashes: {
       js: jsHash,
       wasm: wasmHash,

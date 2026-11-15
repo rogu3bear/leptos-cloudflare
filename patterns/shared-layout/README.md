@@ -18,16 +18,16 @@ pub fn AppLayout(children: Children) -> impl IntoView {
 }
 ```
 
-Then wrap your router:
+Keep the shared layout inside `Router` so navigation links receive router context:
 
 ```rust
-<AppLayout>
-    <Router>
+<Router>
+    <AppLayout>
         <Routes>
             ...
         </Routes>
-    </Router>
-</AppLayout>
+    </AppLayout>
+</Router>
 ```
 
 ## Why This Works Well Here

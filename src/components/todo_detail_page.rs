@@ -67,8 +67,6 @@ pub fn TodoDetailPage() -> impl IntoView {
         }
     };
 
-    // After a successful delete, navigate back to the list.
-    // This demonstrates good integration between ServerAction results and the router.
     Effect::new(move |_| {
         if matches!(delete_action.value().get(), Some(Ok(_))) {
             navigate("/lab", Default::default());
@@ -122,10 +120,6 @@ pub fn TodoDetailPage() -> impl IntoView {
                             }
                         };
 
-                        // Small example of derived state with Memo.
-                        // This only recomputes when `optimistic_completed` or the title changes.
-                        // In a larger UI this pattern avoids unnecessary work compared to
-                        // recalculating inside the view every render.
                         let status_label = Memo::new(move |_| {
                             if optimistic_completed() { "Completed" } else { "Open" }
                         });
@@ -165,22 +159,9 @@ pub fn TodoDetailPage() -> impl IntoView {
                                     "After hydration, the buttons use ServerAction for optimistic updates while the resource refetches."
                                 </p>
 
-                                // Second independent Suspense boundary.
-                                // This demonstrates how Leptos + edge SSR can stream different
-                                // sections independently. In a real app this section could load
-                                // slower data (audit log, related items, etc.) without blocking
-                                // the main content.
-                                <Suspense fallback=move || view! { <div class="composer-hint">"Loading metadata..."</div> }>
-                                    {move || {
-                                        // In a real implementation this would be another Resource
-                                        // calling a server function. Here we just show the pattern.
-                                        view! {
-                                            <div class="composer-hint detail-metadata">
-                                                "Metadata loaded independently (streaming candidate)."
-                                            </div>
-                                        }
-                                    }}
-                                </Suspense>
+                                <div class="composer-hint detail-metadata">
+                                    "Metadata comes from the loaded task record."
+                                </div>
                             </section>
 
                             <Show when=move || mutation_error().is_some()>

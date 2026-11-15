@@ -34,6 +34,8 @@ enum RouteFamily {
     Start,
     Architecture,
     Patterns,
+    ResourceExplorer,
+    ResourceDetail,
     Lab,
     LabDetail,
     About,
@@ -45,6 +47,8 @@ enum RouteFamily {
 #[serde(rename_all = "snake_case")]
 enum ServerFunction {
     ListTodos,
+    SearchTodos,
+    UpdateTodo,
     CreateTodo,
     ToggleTodo,
     DeleteTodo,
@@ -141,6 +145,10 @@ fn classify_route(path: &str) -> RouteFamily {
         "/start" => RouteFamily::Start,
         "/architecture" => RouteFamily::Architecture,
         "/patterns" => RouteFamily::Patterns,
+        "/patterns/resource-explorer" => RouteFamily::ResourceExplorer,
+        _ if has_single_path_parameter(normalized, "/patterns/resource-explorer/") => {
+            RouteFamily::ResourceDetail
+        }
         "/lab" => RouteFamily::Lab,
         "/about" => RouteFamily::About,
         "/contact" => RouteFamily::Contact,
@@ -164,6 +172,8 @@ fn classify_server_function(path: &str) -> ServerFunction {
     }
     match name {
         "/api/list_todos" => ServerFunction::ListTodos,
+        "/api/search_todos" => ServerFunction::SearchTodos,
+        "/api/update_todo" => ServerFunction::UpdateTodo,
         "/api/create_todo" => ServerFunction::CreateTodo,
         "/api/toggle_todo" => ServerFunction::ToggleTodo,
         "/api/delete_todo" => ServerFunction::DeleteTodo,
@@ -242,6 +252,8 @@ mod tests {
         // Observed in the built Worker/browser server-function URLs.
         for name in [
             "list_todos",
+            "search_todos",
+            "update_todo",
             "create_todo",
             "toggle_todo",
             "delete_todo",

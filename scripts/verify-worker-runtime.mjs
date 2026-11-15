@@ -33,9 +33,12 @@ if (!existsSync(shimPath)) {
   throw new Error(`missing generated Worker shim: ${shimPath}`);
 }
 
-const shim = await readFile(shimPath, "utf8");
+const entry = await readFile(shimPath, "utf8");
+requireSnippet("build/_worker.js", entry, 'import { withDispatch } from "./dispatch.mjs";');
+requireSnippet("build/_worker.js", entry, 'withDispatch(LeptosWorker');
+const shim = entry + await readFile(join(root, "build/dispatch.mjs"), "utf8");
 requireSnippet("build/_worker.js", shim, 'import LeptosWorker from "./index.js";');
-requireSnippet("build/_worker.js", shim, "export default class extends LeptosWorker");
+requireSnippet("build/_worker.js", shim, "return class extends LeptosWorker");
 requireSnippet("build/_worker.js", shim, 'const REALTIME_SOCKET_PATH = "/realtime/socket";');
 requireSnippet("build/_worker.js", shim, "function isWebSocketUpgrade(request)");
 requireSnippet("build/_worker.js", shim, "function handleRealtimeSocket()");
@@ -43,7 +46,7 @@ requireSnippet("build/_worker.js", shim, "new WebSocketPair()");
 requireSnippet("build/_worker.js", shim, "Template endpoint only. Use Durable Objects");
 requireSnippet("build/_worker.js", shim, "status: 426");
 requireSnippet("build/_worker.js", shim, 'headers: { Upgrade: "websocket" }');
-requireSnippet("build/_worker.js", shim, '"/pkg/"');
+requireSnippet("build/_worker.js", shim, 'assetPrefix');
 requireSnippet("build/_worker.js", shim, '"/asset-manifest.json"');
 requireSnippet("build/_worker.js", shim, '"/app-icon.svg"');
 requireSnippet("build/_worker.js", shim, '"/app-icon-192.png"');
@@ -56,6 +59,7 @@ requireSnippet("build/_worker.js", shim, "if (!this.ctx.tracing?.enterSpan)");
 requireSnippet("build/_worker.js", shim, "this.ctx.tracing.enterSpan(");
 requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.telemetry.schema_version", 1)');
 requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.boundary", boundary)');
-requireSnippet("build/_worker.js", shim, "super.fetch(request)");
+requireSnippet("build/_worker.js", shim, "super.fetch(leptosRequest)");
+requireSnippet("build/_worker.js", shim, 'const leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;');
 
 console.log("[verify-worker-runtime] Worker shim, compatibility date, sampled observability, low-cardinality SSR/server-function spans, Assets binding, WebSocket lane, and SSR fallback are aligned");

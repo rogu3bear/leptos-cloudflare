@@ -1,11 +1,5 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ContactSubmissionInput {
-    pub name: String,
-    pub email: String,
-    pub topic: String,
-    pub message: String,
-    pub website: String,
-}
+pub use crate::contact_fields::ContactSubmissionInput;
+use crate::contact_fields::{MAX_EMAIL_CHARS, MAX_MESSAGE_CHARS, MAX_NAME_CHARS, MAX_TOPIC_CHARS};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidatedContactSubmission {
@@ -26,11 +20,7 @@ impl ContactValidationError {
     }
 }
 
-const MAX_NAME_CHARS: usize = 80;
-const MAX_EMAIL_CHARS: usize = 254;
-const MAX_TOPIC_CHARS: usize = 120;
 const MIN_MESSAGE_CHARS: usize = 20;
-const MAX_MESSAGE_CHARS: usize = 1_800;
 const MAX_MESSAGE_LINES: usize = 40;
 const MAX_LINK_MARKERS: usize = 3;
 

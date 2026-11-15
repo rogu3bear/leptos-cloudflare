@@ -2,8 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
-EXPECTED_WORKER_BUILD_VERSION="0.7.5"
+source "$ROOT_DIR/scripts/toolchain.sh"
 
 cd "$ROOT_DIR"
 

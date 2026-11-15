@@ -2,9 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
-EXPECTED_WORKER_BUILD_VERSION="0.7.5"
-EXPECTED_WRANGLER_VERSION="4.120.1"
+source "$ROOT_DIR/scripts/toolchain.sh"
 missing=0
 
 pass() {
@@ -34,13 +32,15 @@ check_command() {
 check_command rustup "Install Rust from https://rustup.rs/."
 check_command cargo "Install Rust from https://rustup.rs/."
 check_command bun "Install Bun from https://bun.sh/."
+if [ "$missing" -ne 0 ]; then exit 1; fi
+EXPECTED_WRANGLER_VERSION="$(expected_wrangler_version)"
 
 wrangler_cmd() {
-  bunx "wrangler@${EXPECTED_WRANGLER_VERSION}" "$@"
+  "$ROOT_DIR/scripts/wrangler.sh" "$@"
 }
 
 expected_wasm_bindgen_version() {
-  "$ROOT_DIR/scripts/with-wasm-bindgen-cli.sh" --version | awk '{print $2}'
+  "$ROOT_DIR/scripts/with-wasm-bindgen-cli.sh" --expected-version
 }
 
 if cargo leptos --version >/dev/null 2>&1; then
@@ -54,10 +54,10 @@ else
   fail "cargo-leptos is not installed. Run: cargo install cargo-leptos --locked --version $EXPECTED_CARGO_LEPTOS_VERSION"
 fi
 
-if wrangler_cmd --version >/dev/null 2>&1; then
-  pass "wrangler via bunx ($(wrangler_cmd --version | tail -n 1))"
+if [ "$(wrangler_cmd --version 2>/dev/null | tail -n 1)" = "$EXPECTED_WRANGLER_VERSION" ]; then
+  pass "local wrangler ($(wrangler_cmd --version | tail -n 1))"
 else
-  fail "Wrangler $EXPECTED_WRANGLER_VERSION is not available through bunx. Check your Bun installation and network access."
+  fail "Wrangler $EXPECTED_WRANGLER_VERSION is not available through the local launcher. Check your Bun installation and network access."
 fi
 
 EXPECTED_WASM_BINDGEN_VERSION="$(expected_wasm_bindgen_version)"
@@ -73,7 +73,7 @@ else
   warn "global wasm-bindgen-cli is not installed; build uses repo-local $EXPECTED_WASM_BINDGEN_VERSION from Cargo.lock."
 fi
 
-repo_wasm_bindgen_version="$EXPECTED_WASM_BINDGEN_VERSION"
+repo_wasm_bindgen_version="$("$ROOT_DIR/scripts/with-wasm-bindgen-cli.sh" --version | awk '{print $2}')"
 if [ "$repo_wasm_bindgen_version" = "$EXPECTED_WASM_BINDGEN_VERSION" ]; then
   pass "repo-local wasm-bindgen-cli ($repo_wasm_bindgen_version)"
 else

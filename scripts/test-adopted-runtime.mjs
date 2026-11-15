@@ -9,7 +9,7 @@ import { adoptProject } from "./init-project.mjs";
 const root = process.cwd();
 const fixture = await mkdtemp(join(tmpdir(), "leptos-cf-adopted-runtime-"));
 try {
-  for (const file of ["Cargo.toml", "Cargo.lock", ".cargo", ".cfctl", "wrangler.toml", "src", "scripts", "docs", "migrations", "style", "assets"]) {
+  for (const file of ["Cargo.toml", "Cargo.lock", "package.json", "bun.lock", ".cargo", ".cfctl", "wrangler.toml", "pages", "runtime", "src", "scripts", "docs", "migrations", "style", "assets"]) {
     await cp(join(root, file), join(fixture, file), { recursive: true });
   }
   // Share only generated outputs/tool caches, never source or provider config.
@@ -17,7 +17,11 @@ try {
   await mkdir(join(root, "var"), { recursive: true });
   await symlink(join(root, "target"), join(fixture, "target"));
   await symlink(join(root, "var"), join(fixture, "var"));
+  await symlink(join(root, "node_modules"), join(fixture, "node_modules"));
   await adoptProject(fixture, "acceptance-app");
+  const pages = Bun.TOML.parse(await readFile(join(fixture, "pages/wrangler.toml"), "utf8"));
+  assert.equal(pages.name, "acceptance-app");
+  assert.equal(pages.d1_databases[0].database_name, "acceptance-app-db");
   await writeFile(join(fixture, "src/components/home_page.rs"), `use leptos::prelude::*;
 #[component]
 pub fn HomePage() -> impl IntoView {

@@ -88,7 +88,7 @@ pub fn ContactPage() -> impl IntoView {
                             type="text"
                             name="name"
                             autocomplete="name"
-                            maxlength="80"
+                            maxlength=crate::contact_fields::MAX_NAME_CHARS
                             prop:value=move || name.get()
                             on:input=move |ev| name.set(event_target_value(&ev))
                         />
@@ -100,7 +100,7 @@ pub fn ContactPage() -> impl IntoView {
                             type="email"
                             name="email"
                             autocomplete="email"
-                            maxlength="254"
+                            maxlength=crate::contact_fields::MAX_EMAIL_CHARS
                             prop:value=move || email.get()
                             on:input=move |ev| email.set(event_target_value(&ev))
                         />
@@ -112,7 +112,7 @@ pub fn ContactPage() -> impl IntoView {
                             type="text"
                             name="topic"
                             autocomplete="off"
-                            maxlength="120"
+                            maxlength=crate::contact_fields::MAX_TOPIC_CHARS
                             prop:value=move || topic.get()
                             on:input=move |ev| topic.set(event_target_value(&ev))
                         />
@@ -123,7 +123,7 @@ pub fn ContactPage() -> impl IntoView {
                             class="composer-input contact-message"
                             name="message"
                             rows="7"
-                            maxlength="1800"
+                            maxlength=crate::contact_fields::MAX_MESSAGE_CHARS
                             prop:value=move || message.get()
                             on:input=move |ev| message.set(event_target_value(&ev))
                         ></textarea>

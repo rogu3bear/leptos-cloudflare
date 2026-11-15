@@ -57,7 +57,7 @@ Use multiple independent `<Suspense>` boundaries. The main entity can load while
 
 - Always keep a top-level `WildcardSegment("any")` catch-all outside any layout. This works with the generated `build/_worker.js` to protect deep links.
 - Server functions that touch D1 must wrap bodies in `SendWrapper` (Workers are single-threaded).
-- Body size limits and security headers (CSP, anti-framing) are applied at the Worker level in `src/lib.rs`.
+- Body size limits and security headers (CSP, anti-framing) are applied at the Worker level in `src/edge/`.
 
 ## Variations & Hardening
 

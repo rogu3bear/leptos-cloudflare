@@ -5,19 +5,20 @@
 # This is the single local command for release readiness.
 # Run it before pushing, opening a PR, or claiming a change is complete.
 #
-# It is intentionally a thin orchestrator — the real power lives in the
-# individual scripts it calls (check-deps.sh, build-edge.sh, etc.).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 echo "==> Verifying local release readiness"
-# Refuse an incomplete release before expensive compilation.
 if ! command -v cargo-audit >/dev/null 2>&1; then
   ./scripts/security-audit.sh
 fi
 bun ./scripts/test-acceptance.mjs
 bun ./scripts/test-asset-fingerprints.mjs
+bun ./scripts/test-pages-package.mjs
+bun ./scripts/test-dispatch.mjs
+bun ./scripts/test-pattern-links.mjs
+bun ./scripts/test-file-limits.mjs
 
 echo "==> 1/11 Dependency and toolchain check"
 ./scripts/check-deps.sh
@@ -46,9 +47,10 @@ bash ./scripts/build-edge.sh
 
 echo "==> 9/11 Local Worker rendering and network boundaries"
 bun ./scripts/test-worker-boundaries.mjs
+LEPTOS_TEST_PAGES=1 bun ./scripts/test-worker-boundaries.mjs
 
 echo "==> 10/11 Wrangler deployment structure validation"
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 
 echo "==> 11/11 Repository hygiene"
 git diff --check

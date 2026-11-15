@@ -25,19 +25,7 @@ A good pattern here has these qualities:
 
 ## Directory Structure
 
-```
-patterns/
-├── README.md                 # This file
-├── dynamic-entity-detail/    # Example pattern
-│   ├── README.md
-│   └── ...
-├── realtime-durable-object/  # Shared WebSocket state via Durable Objects
-│   ├── README.md
-│   └── ...
-└── shared-layout/            # Another example
-    ├── README.md
-    └── ...
-```
+The [current pattern index](#current-patterns) is the directory inventory.
 
 Each pattern directory should contain:
 - `README.md` — The primary documentation (problem, solution, trade-offs, integration notes, Cloudflare-specific gotchas).
@@ -71,9 +59,13 @@ We prefer **high-quality, deeply documented patterns** over quantity.
 - A pattern README does not reference at least one core template contract or file.
 - A local markdown link or inline core path reference points at a file that no longer exists.
 
+These checks validate indexing and references, not compiled examples or rendered behavior. The resource explorer also runs against the local Worker in `scripts/test-worker-boundaries.mjs`.
+
 This keeps the second layer honest: pattern examples and docs can build on the core, but they cannot silently drift away from the checked-in routing, runtime, build, and documentation contracts.
 
 ## Current Patterns
+
+- [Resource Explorer](./resource-explorer/) — Runnable search, linked context, and draft/review/save workflow using the existing lab records.
 
 - [Dynamic Entity Detail](./dynamic-entity-detail/) — Typed server functions, ParamSegment routing, fine-grained reactivity, optimistic updates, and independent loading sections.
 - [Realtime Durable Object](./realtime-durable-object/) — Upgrade handoff from `/realtime/socket` into Durable Objects for shared realtime rooms, presence, fanout, and hibernating WebSockets.

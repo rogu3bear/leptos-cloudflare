@@ -103,7 +103,10 @@ export async function writeProductionConfig(root, identity) {
     ownsTemporary = false;
     await chmod(outputPath, 0o600);
   } catch (error) {
-    if (ownsTemporary) await unlink(temporaryPath).catch(() => {});
+    if (ownsTemporary) {
+      try { await unlink(temporaryPath); }
+      catch (cleanupError) { throw new AggregateError([error, cleanupError], "Production config write and temporary cleanup failed", { cause: error }); }
+    }
     throw error;
   }
 }

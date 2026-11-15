@@ -1,81 +1,20 @@
 #!/usr/bin/env bun
 
-import { spawn } from "node:child_process";
-import { once } from "node:events";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:net";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-
+import { createConnection } from "node:net";
+import { withLocalPreview, fetchBoundary } from "./local-preview.mjs";
+import { testResourceExplorer } from "./test-resource-explorer.mjs";
+import { testContactIntake } from "./test-contact-intake.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
 const root = process.cwd();
+const pagesMode = process.env.LEPTOS_TEST_PAGES === "1";
 const { leptos, referenceSite } = await projectMetadata(root);
 const documentPath = process.env.LEPTOS_BOUNDARY_DOCUMENT_PATH ?? (referenceSite ? "/architecture" : "/");
 if (!documentPath.startsWith("/") || documentPath.startsWith("//")) throw new Error("boundary document path must be local");
-const workerEntrypoint = resolve(root, "build/_worker.js");
-const assetDirectory = resolve(root, "target/site");
-const assetManifestPath = join(assetDirectory, "asset-manifest.json");
 
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
-  }
-}
-
-async function reservePort() {
-  const server = createServer();
-  server.unref();
-  server.listen(0, "127.0.0.1");
-  await once(server, "listening");
-  const address = server.address();
-  assert(address && typeof address === "object", "failed to reserve a local test port");
-  const { port } = address;
-  server.close();
-  await once(server, "close");
-  return port;
-}
-
-async function fetchBoundary(url, init) {
-  return fetch(url, {
-    ...init,
-    redirect: "manual",
-    signal: AbortSignal.timeout(5_000),
-  });
-}
-
-async function waitForWorker(origin, child, logs) {
-  const deadline = Date.now() + 90_000;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
-      throw new Error(`Wrangler exited before readiness.\n${logs()}`);
-    }
-
-    try {
-      const response = await fetchBoundary(`${origin}${documentPath}`);
-      if (response.status > 0) return;
-    } catch {
-      // Wrangler is still starting.
-    }
-
-    await Bun.sleep(250);
-  }
-
-  throw new Error(`timed out waiting for Wrangler.\n${logs()}`);
-}
-
-async function stopWorker(child) {
-  if (child.exitCode !== null) return;
-  child.kill("SIGTERM");
-
-  const closed = await Promise.race([
-    once(child, "close").then(() => true),
-    Bun.sleep(5_000).then(() => false),
-  ]);
-
-  if (!closed && child.exitCode === null) {
-    child.kill("SIGKILL");
-    await once(child, "close");
   }
 }
 
@@ -103,6 +42,7 @@ async function runAssertions(origin) {
     documentResponse.headers.has("set-cookie"),
     "dynamic HTML did not establish the scoped session cookie",
   );
+  assert(documentResponse.headers.get("x-frame-options") === "DENY", "dynamic HTML is missing anti-framing protection");
 
   const csp = documentResponse.headers.get("content-security-policy") ?? "";
   const nonce = csp.match(/'nonce-([^']+)'/)?.[1];
@@ -146,6 +86,16 @@ async function runAssertions(origin) {
     /<main(?:\s[^>]*)?>/.test(missingHtml) && /<h1(?:\s[^>]*)?>/.test(missingHtml),
     "unknown document route lacks the server-rendered recovery page",
   );
+  if (pagesMode) {
+    const adopterAsset = await fetchBoundary(`${origin}/__adopter_boundary_logo.svg`);
+    assert(adopterAsset.status === 200 && await adopterAsset.text() === "adopter asset fixture", "Pages did not serve an adopter asset outside the template whitelist");
+    const absentAsset = await fetchBoundary(`${origin}/__adopter_boundary_missing.svg`);
+    assert(absentAsset.status === 404, `missing adopter asset returned ${absentAsset.status}`);
+    for (const path of ["/_server/index.js", "/_server/index_bg.wasm"]) {
+      const response = await fetchBoundary(`${origin}${path}`);
+      assert(response.status === 404, `Pages server module ${path} returned ${response.status}`);
+    }
+  }
 
   if (referenceSite) {
     assert(documentHtml.includes("SSR + hydration") && documentHtml.includes("Cloudflare Pages"), "reference architecture page lost its decision content");
@@ -159,6 +109,25 @@ async function runAssertions(origin) {
     realtimeBody === "WebSocket upgrade required.",
     "realtime capability route did not return the expected upgrade-required response",
   );
+  const socketOrigin = origin.replace(/^http/, "ws");
+  const socket = new WebSocket(`${socketOrigin}/realtime/socket`);
+  const message = await new Promise((resolveMessage, rejectMessage) => {
+    const timer = setTimeout(() => rejectMessage(new Error("WebSocket capability timed out")), 5_000);
+    socket.onmessage = (event) => { clearTimeout(timer); resolveMessage(event.data); };
+    socket.onerror = () => { clearTimeout(timer); rejectMessage(new Error("WebSocket capability upgrade failed")); };
+  });
+  const ready = JSON.parse(String(message));
+  assert(ready.type === "ready" && ready.route === "/realtime/socket", "WebSocket capability sent an unexpected message");
+  socket.close();
+  const upgradeStatus = await new Promise((resolveStatus, rejectStatus) => {
+    const address = new URL(origin);
+    const connection = createConnection({ host: address.hostname, port: Number(address.port) });
+    connection.setTimeout(5_000, () => connection.destroy(new Error("unknown WebSocket route timed out")));
+    connection.on("connect", () => connection.write(`GET /__unknown_websocket__ HTTP/1.1\r\nHost: ${address.host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n`));
+    connection.once("data", (data) => { connection.destroy(); resolveStatus(data.toString().split("\r\n")[0]); });
+    connection.once("error", rejectStatus);
+  });
+  assert(/^HTTP\/1\.1 404\b/.test(upgradeStatus), `unknown WebSocket route returned ${upgradeStatus}`);
 
   const rejectedApiResponse = await fetchBoundary(`${origin}/api/__runtime_boundary__`, {
     method: "DELETE",
@@ -168,84 +137,25 @@ async function runAssertions(origin) {
     (await rejectedApiResponse.text()) === "Method not allowed for server functions.",
     "unsafe API method did not cross the expected request guard",
   );
+  for (const [label, headers, body, expected] of [
+    ["cross-origin", { origin: "https://other.example", "content-type": "application/x-www-form-urlencoded" }, "x=1", 403],
+    ["content-type", { origin, "content-type": "text/plain" }, "x=1", 415],
+    ["body limit", { origin, "content-type": "application/x-www-form-urlencoded" }, `x=${"x".repeat(4096)}`, 413],
+  ]) {
+    const response = await fetchBoundary(`${origin}/api/__runtime_boundary__`, { method: "POST", headers, body });
+    assert(response.status === expected, `${label} guard returned ${response.status}, expected ${expected}: ${(await response.text()).slice(0, 1000)}`);
+  }
 }
 
 async function main() {
-  await Promise.all([
-    readFile(workerEntrypoint),
-    readFile(assetManifestPath),
-  ]).catch(() => {
-    throw new Error("missing release artifacts; run bash ./scripts/build-edge.sh first");
-  });
-
-  const testDirectory = await mkdtemp(join(tmpdir(), "leptos-cf-boundaries-"));
-  const configPath = join(testDirectory, "wrangler.test.toml");
-  const persistencePath = join(testDirectory, "state");
-  const port = await reservePort();
-  const inspectorPort = await reservePort();
-  const origin = `http://127.0.0.1:${port}`;
-  const config = [
-    'name = "leptos-cf-boundary-test"',
-    `main = ${JSON.stringify(workerEntrypoint)}`,
-    'compatibility_date = "2026-08-10"',
-    "",
-    "[assets]",
-    `directory = ${JSON.stringify(assetDirectory)}`,
-    'binding = "ASSETS"',
-    "",
-    "[[d1_databases]]",
-    'binding = "DB"',
-    'database_name = "leptos-cf-boundary-test"',
-    'database_id = "00000000-0000-0000-0000-000000000000"',
-    `migrations_dir = ${JSON.stringify(resolve(root, "migrations"))}`,
-    "",
-  ].join("\n");
-  await writeFile(configPath, config);
-
-  let output = "";
-  const wrangler = spawn(
-    "bunx",
-    [
-      "wrangler@4.120.1",
-      "dev",
-      "--config",
-      configPath,
-      "--local",
-      "--ip",
-      "127.0.0.1",
-      "--port",
-      String(port),
-      "--inspector-port",
-      String(inspectorPort),
-      "--persist-to",
-      persistencePath,
-      "--log-level",
-      "error",
-      "--show-interactive-dev-session=false",
-    ],
-    {
-      cwd: root,
-      env: { ...process.env, CI: "1", NO_COLOR: "1" },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-
-  const capture = (chunk) => {
-    output = `${output}${chunk}`.slice(-20_000);
-  };
-  wrangler.stdout.on("data", capture);
-  wrangler.stderr.on("data", capture);
-
-  try {
-    await waitForWorker(origin, wrangler, () => output);
+  await withLocalPreview({ root, pages: pagesMode, migrate: referenceSite, readyPath: documentPath }, async (origin, store) => {
     await runAssertions(origin);
-    console.log(
-      "[test-worker-boundaries] SSR HTML, nonce hydration, asset routing, 404, API guard, and realtime boundary passed",
-    );
-  } finally {
-    await stopWorker(wrangler);
-    await rm(testDirectory, { recursive: true, force: true });
-  }
+    if (referenceSite) {
+      await testResourceExplorer(origin);
+      await testContactIntake(origin, store);
+    }
+    console.log(`[test-worker-boundaries] ${pagesMode ? "Pages" : "Workers"}: rendering, assets, guards, session data and WebSocket boundaries passed`);
+  });
 }
 
 main().catch((error) => {

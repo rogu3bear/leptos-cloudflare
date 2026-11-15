@@ -4,6 +4,7 @@ pub mod architecture_page;
 pub mod contact_page;
 pub mod home_page;
 pub mod patterns_page;
+pub mod resource_explorer;
 pub mod start_page;
 pub mod todo_detail_page;
 pub mod todo_page;

@@ -1,6 +1,6 @@
 # Leptos CF — Edge Field Guide
 
-A source-derived field guide and full-stack [Leptos 0.8](https://leptos.dev/) starter for Cloudflare Workers. The public site maps the request path, names runtime ownership, and keeps source, local verification, provider state, and live behavior visibly separate.
+A source-derived field guide and full-stack [Leptos 0.8](https://leptos.dev/) starter for Cloudflare Workers or Pages. The public site maps the request path, names runtime ownership, and keeps source, local verification, provider state, and live behavior visibly separate.
 
 The field guide lives at `/`, `/start`, `/architecture`, `/patterns`, and `/about`. Two bounded implementation labs remain intentionally inspectable: `/lab` demonstrates session-scoped D1 mutations through Leptos server functions, while `/contact` demonstrates validated D1 intake without claiming email, webhook, Queue, or operator delivery.
 
@@ -8,7 +8,7 @@ The field guide lives at `/`, `/start`, `/architecture`, `/patterns`, and `/abou
 
 Leptos compiles to WASM on both sides of the wire. The server renders HTML on Cloudflare's edge network, the client hydrates it with the same component code, and server functions give you a typed RPC boundary between the two. No JavaScript framework, no REST boilerplate, no separate API layer.
 
-Cloudflare gives you the deployment surface: Workers for compute, D1 for SQL, Workers Static Assets for exact files, Tunnels for exposing local dev to the internet, and Containers for when you outgrow the Worker sandbox. The template deploys the Worker and `target/site` as one Workers unit. It does not create a Pages project; add that separate lane only when a named consumer requires its own Pages workflow and proof boundary.
+Cloudflare gives you the deployment surface: Workers for compute, D1 for SQL, Workers Static Assets for exact files, Tunnels for exposing local dev to the internet, and Containers for when you outgrow the Worker sandbox. Workers is the default: it deploys the Worker and `target/site` together. An experimental Pages package aims to use the same SSR handler, server functions, D1 binding and hydration assets through advanced mode; its local runtime has passed qualification. Each choice has its own configuration and deployment proof.
 
 **What you get out of the box:**
 
@@ -29,12 +29,30 @@ git clone https://github.com/rogu3bear/leptos-cloudflare.git my-app
 cd my-app
 ./scripts/bootstrap.sh
 ./scripts/check-deps.sh
-CI=1 bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --local
+CI=1 ./scripts/wrangler.sh d1 migrations apply leptos-cf-db --local
 bash ./scripts/build-edge.sh
-bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
+./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
 ```
 
 This path uses the checked-in placeholder D1 binding only for local development. Production initialization is a separate, reviewed provider change. To adopt a different name before adding provider identity, run `./scripts/init.sh my-app`. It preserves the working example and migrations; see [Adopting the starter](docs/adopting.md).
+
+### Choose a deployment target
+
+Workers uses `wrangler.toml` and the Quick Start above. The Pages local runtime passes the full local release gate; its production release path remains experimental. To try it locally:
+
+```bash
+bash ./scripts/build-edge.sh
+bun ./scripts/package-pages.mjs target/pages
+cd pages
+CI=1 ../scripts/wrangler.sh d1 migrations apply leptos-cf-db --local
+../scripts/wrangler.sh pages dev
+```
+
+`target/pages` must be empty when packaging; use a fresh directory or deliberately remove only your own obsolete output before rebuilding. After `init.sh`, use the adopted database name. Pages receives every request and forwards named assets to `ASSETS`; Workers may serve exact files before invoking the handler. Configure Pages D1 and preview/production identities separately before any deployment. The checked-in placeholders are for local use only; do not deploy them. See [deployment details](docs/edge-deployment.md#pages-option) and [agent playbook](docs/agent-playbook.md).
+
+### Start with any coding agent
+
+Give your agent this repository and the task you want done. Ask it to read [the public agent playbook](docs/agent-playbook.md), run the local prerequisites and choose Workers or Pages with you. Local development needs no Cloudflare credentials. Agent-specific local instructions remain optional; no agent integration is installed automatically.
 
 ## Table of Contents
 
@@ -54,7 +72,7 @@ This path uses the checked-in placeholder D1 binding only for local development.
 
 ## Agent-First Setup
 
-The fastest path from clone to deploy is to hand the project to an AI coding agent (Claude Code, Codex, etc.) that can use a governed Cloudflare control plane. The agent should prepare and verify the source without a provider credential, receive a just-in-time short-lived child only for the approved release window, inventory the account, create only missing resources through reviewed plans, derive the ignored production config from provider readback, apply the repository-bound migration operation, deploy, and read the resulting provider state back.
+Any coding agent can start with the public playbook and the credential-free Quick Start. The following production procedure is specific to a cfctl-governed workspace. Independent adopters should use the standalone lane in [credential profiles](docs/credentials.md); provider actions are separate from local setup.
 
 ### What the agent needs
 
@@ -163,7 +181,7 @@ The placeholder `00000000-0000-0000-0000-000000000000` IDs in tracked `wrangler.
 
 In this `~/dev` workspace, live Cloudflare account reads, standards audits,
 mutation planning, execution, and post-change verification use `cfctl` from
-`PATH`, backed by `/Users/star/dev/cloudflare`. Direct Wrangler provider writes
+`PATH`, backed by its owning Cloudflare workspace. Direct Wrangler provider writes
 are not a fallback when a `cfctl` capability fails closed:
 
 ```bash
@@ -186,11 +204,11 @@ Cloudflare's infrastructure is fully API-driven. Every dashboard action has a CL
 ```bash
 rustup toolchain install stable
 rustup target add wasm32-unknown-unknown
-cargo install cargo-leptos --locked --version 0.3.5
+cargo install cargo-leptos --locked --version 0.3.7
 cargo install worker-build --locked --version 0.7.5
 ```
 
-This template uses `bunx wrangler@4.120.1`, so a global Wrangler install is not required. You do need [Bun](https://bun.sh/). `wasm-bindgen-cli` is installed into `var/cargo-tools/` from the version resolved in `Cargo.lock`, so the build does not depend on whichever global `wasm-bindgen` happens to be on `PATH`.
+This template uses `./scripts/wrangler.sh`, so a global Wrangler install is not required. You do need [Bun](https://bun.sh/). `wasm-bindgen-cli` is installed into `var/cargo-tools/` from the version resolved in `Cargo.lock`, so the build does not depend on whichever global `wasm-bindgen` happens to be on `PATH`.
 
 ### Bootstrap scripts
 
@@ -204,7 +222,7 @@ This template uses `bunx wrangler@4.120.1`, so a global Wrangler install is not 
 The following is the portable Wrangler path for operators who are not using a governed control plane:
 
 ```bash
-bunx wrangler@4.120.1 d1 create leptos-cf-db
+./scripts/wrangler.sh d1 create leptos-cf-db
 ```
 
 Wrangler prints a `database_id`. Use it to derive `wrangler.production.toml` with `scripts/write-production-config.mjs`; never patch the tracked template. In this operator workspace, use the governed `cfctl` lifecycle above instead.
@@ -213,23 +231,23 @@ Wrangler prints a `database_id`. Use it to derive `wrangler.production.toml` wit
 
 ```bash
 # Local (for wrangler dev)
-bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --local
+./scripts/wrangler.sh d1 migrations apply leptos-cf-db --local
 
 # Remote (for production)
-bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
+./scripts/wrangler.sh d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
 ```
 
 ### Build and run locally
 
 ```bash
 bash ./scripts/build-edge.sh
-bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
+./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
 ```
 
 ### Deploy
 
 ```bash
-bunx wrangler@4.120.1 deploy --config wrangler.production.toml
+./scripts/wrangler.sh deploy --config wrangler.production.toml
 ```
 
 ---
@@ -255,7 +273,7 @@ lane in an already governed account.
 
 ```bash
 bash ./scripts/build-edge.sh
-bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
+./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
 ```
 
 Wrangler serves the Worker and the asset bundle from `target/site`. The `/lab` UI talks to D1 only through Leptos server functions.
@@ -276,7 +294,7 @@ SECRET_KEY=dev-value-here
 Once ignored `wrangler.production.toml` has been derived from provider-read identity and the remote migration has been applied:
 
 ```bash
-bunx wrangler@4.120.1 deploy --config wrangler.production.toml
+./scripts/wrangler.sh deploy --config wrangler.production.toml
 ```
 
 That command documents the portable starter path. In this operator workspace, production changes use the repository's governed `cfctl` plan/approval/run/status/readback lane; a successful local build or Wrangler dry run is not deployment proof. Use the complete account/profile/name/config/message-pinned deployment example in [the governed lifecycle](#then-tell-it-what-to-do). It prepares a plan and does not authorize or execute it.
@@ -314,13 +332,13 @@ See [Realtime and WebSockets](docs/realtime.md) before adding chat, presence, co
 
 ```bash
 # Interactive (one at a time)
-bunx wrangler@4.120.1 secret put SECRET_KEY
+./scripts/wrangler.sh secret put SECRET_KEY
 ```
 
 ### Dry run
 
 ```bash
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 ```
 
 ---
@@ -517,6 +535,8 @@ sync.
 
 ## Patterns Library
 
+The first executable workflow is the [Resource Explorer](patterns/resource-explorer/README.md), available at `/patterns/resource-explorer` and `/patterns/resource-explorer/:id`. It reuses session-scoped lab records for URL-preserved search, related records, and reviewed edits with conflict and retry handling.
+
 Real applications need more than the minimal starter. See the [`patterns/`](./patterns/) directory for battle-tested, well-documented solutions to common problems (dynamic entity detail, shared layouts, realtime Durable Objects, etc.). These are designed to be composed on top of the core template while keeping the starter itself lean.
 
 ## Architecture Notes
@@ -567,7 +587,7 @@ The complete local release readiness check:
 ./scripts/verify.sh
 ```
 
-For the individual pieces that the script orchestrates, see the script itself and `AGENTS.md`.
+For the individual pieces that the script orchestrates, see the script itself and [the public agent playbook](docs/agent-playbook.md).
 
 ---
 
@@ -577,20 +597,23 @@ Portable Wrangler commands are listed below for local development and non-govern
 
 | Command | What it does |
 |---|---|
-| `bunx wrangler@4.120.1 dev --local` | Start local dev server |
-| `bunx wrangler@4.120.1 deploy --config wrangler.production.toml` | Deploy to production |
-| `bunx wrangler@4.120.1 deploy --dry-run --config wrangler.production.toml` | Validate the derived production config without deploying |
-| `bunx wrangler@4.120.1 d1 create <name>` | Create a D1 database |
-| `bunx wrangler@4.120.1 d1 migrations apply <db> --local` | Apply migrations locally |
-| `bunx wrangler@4.120.1 d1 migrations apply <db> --remote --config wrangler.production.toml` | Apply migrations to production |
-| `bunx wrangler@4.120.1 d1 execute <db> --local --command "SQL"` | Run ad-hoc SQL locally |
-| `bunx wrangler@4.120.1 d1 execute <db> --remote --command "SQL"` | Run ad-hoc SQL in production |
-| `bunx wrangler@4.120.1 secret put <KEY>` | Set a secret (interactive) |
-| `bunx wrangler@4.120.1 secret list` | List all secrets |
-| `bunx wrangler@4.120.1 tail` | Stream live Worker logs |
+| `./scripts/wrangler.sh dev --local` | Start local dev server |
+| `./scripts/wrangler.sh deploy --config wrangler.production.toml` | Deploy to production |
+| `./scripts/wrangler.sh deploy --dry-run --config wrangler.production.toml` | Validate the derived production config without deploying |
+| `./scripts/wrangler.sh d1 create <name>` | Create a D1 database |
+| `./scripts/wrangler.sh d1 migrations apply <db> --local` | Apply migrations locally |
+| `./scripts/wrangler.sh d1 migrations apply <db> --remote --config wrangler.production.toml` | Apply migrations to production |
+| `./scripts/wrangler.sh d1 execute <db> --local --command "SQL"` | Run ad-hoc SQL locally |
+| `./scripts/wrangler.sh d1 execute <db> --remote --command "SQL"` | Run ad-hoc SQL in production |
+| `./scripts/wrangler.sh secret put <KEY>` | Set a secret (interactive) |
+| `./scripts/wrangler.sh secret list` | List all secrets |
+| `./scripts/wrangler.sh tail` | Stream live Worker logs |
 
 ---
 
 ## License
 
 MIT
+
+
+Local tooling uses the exact Wrangler dependency in `package.json` and `bun.lock`; run `bun install --frozen-lockfile` (also done by bootstrap). The verification dry run launches this local CLI with a Node preload that validates and forwards the original Disk Guard descriptors. It still executes the configured build. API requests with bodies use an isolated request clone so cancellation by the Rust body adapter cannot reset the local Workers proxy; the Rust 4 KiB rejection remains authoritative.

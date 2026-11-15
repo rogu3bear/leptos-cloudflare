@@ -1,0 +1,65 @@
+{
+  "instructionPaths": [
+    "docs/agent-playbook.md"
+  ],
+  "exceptions": [
+    {
+      "path": "Cargo.lock",
+      "kind": "generated-text",
+      "sha256": "b83448e7948ca9b7f4c22afe021320c5669d89cb49f8e972ed7fecc007edb02f",
+      "owner": "Repository Cargo dependency owner",
+      "reason": "Cargo-generated dependency resolution; hand edits or dependency removals solely for line count would change integrity or behavior",
+      "review": "Every Cargo.lock regeneration or hash change"
+    },
+    {
+      "path": "assets/app-icon-192.png",
+      "kind": "binary",
+      "sha256": "d433fe95fd417748433556e3dc8520dd48b2436bd5eff9b531fdd7bb5775ddb9",
+      "owner": "Repository asset owner",
+      "reason": "PNG bitmap has no meaningful physical text-line count",
+      "review": "Every asset replacement or hash change"
+    },
+    {
+      "path": "assets/app-icon-512.png",
+      "kind": "binary",
+      "sha256": "4b6b4480e28e1ca51a80b065212a5069082a4a8929e5cf4053eaeb4750a5fc0c",
+      "owner": "Repository asset owner",
+      "reason": "PNG bitmap has no meaningful physical text-line count",
+      "review": "Every asset replacement or hash change"
+    },
+    {
+      "path": "assets/apple-touch-icon.png",
+      "kind": "binary",
+      "sha256": "a66d8ea472013d616a069cb184f74dc8bf54c7da0c4c0bd2be9991d49a3d6182",
+      "owner": "Repository asset owner",
+      "reason": "PNG bitmap has no meaningful physical text-line count",
+      "review": "Every asset replacement or hash change"
+    },
+    {
+      "path": "docs/design/edge-field-guide-concept.png",
+      "kind": "binary",
+      "sha256": "8e09c4de4f0a18c1d9d15d223848a1386f66750b19931768c4ca43136000c8c8",
+      "owner": "Repository asset owner",
+      "reason": "PNG bitmap has no meaningful physical text-line count",
+      "review": "Every asset replacement or hash change"
+    }
+  ],
+  "ignoredBoundary": {
+    "paths": [
+      ".DS_Store",
+      ".agent/",
+      ".env",
+      ".wrangler/",
+      "build/",
+      "docs/.DS_Store",
+      "node_modules/",
+      "patterns/.DS_Store",
+      "src/.DS_Store",
+      "target/",
+      "var/"
+    ],
+    "owner": "Operator and build/dependency owners",
+    "reason": "Ignored dependencies, outputs, private agent state and sensitive environment inputs are outside the source inventory; contents remain unverified",
+    "review": "When any ignored boundary changes or broader compliance is claimed"
+  }
+}

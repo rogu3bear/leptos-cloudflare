@@ -23,6 +23,11 @@ if [ -z "$version" ]; then
   exit 1
 fi
 
+if [ "${1:-}" = "--expected-version" ]; then
+  printf '%s\n' "$version"
+  exit 0
+fi
+
 install_root="$TOOLS_ROOT/wasm-bindgen-$version"
 binary="$install_root/bin/wasm-bindgen"
 

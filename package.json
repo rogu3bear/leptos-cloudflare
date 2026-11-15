@@ -1,0 +1,7 @@
+{
+  "name": "leptos-cf-tooling",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "4.120.1"
+  }
+}

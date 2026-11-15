@@ -1,0 +1,53 @@
+#!/usr/bin/env bun
+import { strict as assert } from "node:assert";
+import { inspectFiles, measureFile } from "./check-file-limits.mjs";
+const bytes = (text) => Buffer.from(text);
+assert.equal(measureFile("source.rs", bytes("x\n".repeat(2000))).status, "pass");
+assert.equal(measureFile("source.rs", bytes("x\n".repeat(2001))).status, "over-limit");
+assert.equal(measureFile("source.rs", bytes("x\n".repeat(1999) + "x")).lines, 2000);
+assert.equal(measureFile("AGENTS.md", bytes("x\n".repeat(799))).status, "pass");
+assert.equal(measureFile("AGENTS.md", bytes("x\n".repeat(800))).status, "over-limit");
+assert.equal(measureFile("guide.md", bytes("x\n".repeat(800)), { instructionPaths: ["guide.md"] }).status, "over-limit");
+assert.equal(measureFile("empty.txt", bytes("")).lines, 0);
+assert.equal(measureFile("image.png", Buffer.from([0,1])).status, "unresolved-binary");
+const exception = { sha256: measureFile("image.png", Buffer.from([0,1])).sha256, path: "image.png", kind: "binary", owner: "asset owner", reason: "not text", review: "on replacement" };
+assert.equal(measureFile("image.png", Buffer.from([0,1]), { exceptions: [exception] }).status, "excepted");
+assert.equal(measureFile("image.png", Buffer.from([0,1]), { exceptions: [{ path: "image.png", kind: "binary" }] }).status, "unresolved-binary");
+assert.equal(measureFile("source.rs", bytes("x\n".repeat(2001)), { exceptions: [{ path: "source.rs", kind: "generated-text", owner: "producer", reason: "generated", review: "on regeneration", sha256: "wrong" }] }).status, "over-limit");
+const generated = bytes("x\n".repeat(2001));
+const generatedException = { path: "generated.lock", kind: "generated-text", owner: "producer", reason: "generated", review: "on regeneration", sha256: measureFile("generated.lock", generated).sha256 };
+assert.equal(measureFile("generated.lock", generated, { exceptions: [generatedException] }).status, "excepted");
+assert.equal(measureFile("generated.lock", bytes("y\n".repeat(2001)), { exceptions: [generatedException] }).status, "over-limit");
+console.log("[file-limits] physical-line boundaries, instruction purpose, binary decisions and exception invalidation passed");
+
+const { mkdtemp, mkdir, writeFile, symlink, rm } = await import("node:fs/promises");
+const { tmpdir } = await import("node:os");
+const { join } = await import("node:path");
+const { spawnSync } = await import("node:child_process");
+const root = await mkdtemp(join(tmpdir(), "file-limit-scope-"));
+try {
+  assert.equal(spawnSync("git", ["init", "--quiet", root]).status, 0);
+  await writeFile(join(root, ".gitignore"), ".env\nAGENTS.md\nbuild/\n");
+  await writeFile(join(root, "tracked.txt"), "tracked");
+  assert.equal(spawnSync("git", ["add", ".gitignore", "tracked.txt"], { cwd: root }).status, 0);
+  await mkdir(join(root, "nested"));
+  await writeFile(join(root, "nested/untracked.txt"), "untracked");
+  await writeFile(join(root, ".env"), "private fixture, never reported");
+  await writeFile(join(root, "AGENTS.md"), "x\n".repeat(800));
+  await symlink(join(root, "tracked.txt"), join(root, "linked.txt"));
+  let report = await inspectFiles(root);
+  assert.ok(report.files.some((row) => row.path === "tracked.txt"));
+  assert.ok(report.files.some((row) => row.path === "nested/untracked.txt"));
+  assert.ok(report.files.some((row) => row.path === "linked.txt" && row.status === "unverified-nonregular"));
+  assert.ok(report.files.some((row) => row.path === "AGENTS.md" && row.status === "over-limit"));
+  assert.ok(!JSON.stringify(report).includes("private fixture"));
+  assert.deepEqual(report.ignored.paths, [".env"]);
+  await rm(join(root, "linked.txt"));
+  await writeFile(join(root, "AGENTS.md"), "x\n".repeat(799));
+  report = await inspectFiles(root, { ignoredBoundary: { paths: [".env"], owner: "fixture owner", reason: "private runtime input", review: "scope changes" } });
+  assert.equal(report.passed, true);
+  await mkdir(join(root, "build"));
+  await writeFile(join(root, "build/output.txt"), "generated");
+  assert.equal((await inspectFiles(root, { ignoredBoundary: { paths: [".env"], owner: "fixture owner", reason: "private runtime input", review: "scope changes" } })).passed, false);
+  console.log("[file-limits] Git population, ignored privacy, local instructions, symlinks and bounded exceptions passed");
+} finally { await rm(root, { recursive: true, force: true }); }

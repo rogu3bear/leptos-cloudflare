@@ -2,9 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-EXPECTED_CARGO_LEPTOS_VERSION="0.3.5"
-EXPECTED_WORKER_BUILD_VERSION="0.7.5"
-EXPECTED_WRANGLER_VERSION="4.120.1"
+cd "$ROOT_DIR"
+source "$ROOT_DIR/scripts/toolchain.sh"
 
 log() {
   printf '[bootstrap] %s\n' "$1"
@@ -23,9 +22,10 @@ require_command() {
 require_command rustup "Rustup is required. Install it from https://rustup.rs/."
 require_command cargo "Cargo is required. Install Rust from https://rustup.rs/."
 require_command bun "Bun is required. Install it from https://bun.sh/."
+EXPECTED_WRANGLER_VERSION="$(expected_wrangler_version)"
 
 wrangler_cmd() {
-  bunx "wrangler@${EXPECTED_WRANGLER_VERSION}" "$@"
+  "$ROOT_DIR/scripts/wrangler.sh" "$@"
 }
 
 if rustup toolchain list | grep -q '^stable'; then
@@ -76,20 +76,23 @@ if ! command -v cargo-audit >/dev/null 2>&1; then
   exit 1
 fi
 
-log "Checking Wrangler $EXPECTED_WRANGLER_VERSION through bunx."
+bun install --frozen-lockfile
+
+log "Checking Wrangler $EXPECTED_WRANGLER_VERSION through the local launcher."
 wrangler_cmd --version >/dev/null
 
 log "Running dependency checks."
 "$ROOT_DIR/scripts/check-deps.sh"
 
-cat <<'EOF'
+LEPTOS_LOCAL_D1_NAME="$(bun -e 'console.log(Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name)')"
+cat <<EOF
 
 Bootstrap complete.
 
 Local next steps:
-1. CI=1 bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --local
+1. CI=1 ./scripts/wrangler.sh d1 migrations apply $LEPTOS_LOCAL_D1_NAME --local
 2. bash ./scripts/build-edge.sh
-3. bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
+3. ./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
 
 Production initialization is a separate provider transaction:
 Choose the governed or independent standalone profile in docs/credentials.md.

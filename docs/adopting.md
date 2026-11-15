@@ -14,7 +14,7 @@ cd my-app
 ```
 
 The command changes the root Cargo package and lock entry, Leptos output name,
-Worker name, D1 name, and repository migration-operation identity together.
+Worker and Pages project names, both local D1 names, and repository migration-operation identity together.
 It preserves every source module and migration byte. Names contain 1–60 lower
 case letters, digits, or interior hyphens and begin with a letter. Repeating
 the current name changes nothing. Invalid input, customized identity, a bound
@@ -39,9 +39,9 @@ site itself. Application-specific acceptance belongs to your application.
    locally with the adopted D1 name:
 
    ```bash
-   CI=1 bunx wrangler@4.120.1 d1 migrations apply my-app-db --local
+   CI=1 ./scripts/wrangler.sh d1 migrations apply my-app-db --local
    bash ./scripts/build-edge.sh
-   bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581
+   ./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
    ```
 
 3. Create a record in `/lab`, reload and inspect it, toggle it, then delete it.
@@ -75,3 +75,8 @@ needs a reviewed migration plan; the local naming command refuses to rename it.
 Independent public adopters may use the documented portable Wrangler lane.
 Local proof, publication, deployment, and observed application behavior are
 separate completion claims.
+
+
+## Experimental Pages follow-up
+
+The Pages package is not yet release-ready: local runtime qualification passes, but its production release path remains deferred. To continue qualification after renaming to `my-app`, build and package into a fresh `target/pages`, then from `pages/` apply local migrations with `CI=1 ../scripts/wrangler.sh d1 migrations apply my-app-db --local` and start `../scripts/wrangler.sh pages dev`. Prove SSR, hydration, D1, boundaries and both deployment paths before using it. Pages project identity, production D1 bindings and remote migration/deployment need their own authorized cutover and readback; the Workers config generator does not establish them.

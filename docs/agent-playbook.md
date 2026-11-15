@@ -1,8 +1,12 @@
 # Agent Playbook: leptos-cf
 
-Instruction set for AI coding agents working on this Leptos + Cloudflare Workers + D1 starter. Follows the repository conventions established in the codebase. Read this before making any changes.
+Portable instruction set for any coding agent working on this Leptos + Cloudflare Workers or Pages + D1 starter. Follows the repository conventions established in the codebase. Read this before making any changes.
 
 ---
+
+## Start here
+
+Read the README Quick Start, inspect the checkout and preserve existing changes. Ask the project owner which target they intend to use; Workers is the default. The experimental Pages package is intended to share SSR, hydration, server functions and D1, and its local runtime has passed qualification. Workers uses `wrangler.toml` and `build/_worker.js`; Pages uses `pages/wrangler.toml` and a separately packaged advanced-mode output. Follow the Pages option in [edge deployment](edge-deployment.md#pages-option). Local development does not need a provider credential. Make the requested change, run the relevant checks, and run `./scripts/verify.sh` before claiming release readiness. Provider changes need the applicable owner's authority.
 
 ## 1. Prerequisites Check
 
@@ -115,7 +119,7 @@ The generator rejects partial or invalid identity, an already-bound source templ
 Apply to the local SQLite replica first:
 
 ```bash
-CI=1 bunx wrangler@4.120.1 d1 migrations apply "$LEPTOS_D1_NAME" --local
+CI=1 ./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local
 ```
 
 Remote schema application is a production data write. Use the ID in `$LEPTOS_MIGRATION_ID`, the repository-owned operation that binds the clean canonical root and HEAD, every ordered migration blob, operation-pack blob, production-config hash and database identity, a fresh pre-change recovery bookmark, the Wrangler migration ledger, and closed schema readback. Generic D1 import/query paths are not substitutes. If the operation fails closed, stop and resolve its contract; do not bypass it with direct Wrangler or raw SQL.
@@ -134,7 +138,7 @@ cfctl call "$LEPTOS_MIGRATION_ID" \
 The migrations create the `todos` and `contact_submissions` tables plus their indexes. Verify with:
 
 ```bash
-bunx wrangler@4.120.1 d1 execute "$LEPTOS_D1_NAME" --local --command "SELECT name FROM sqlite_master WHERE type='table'"
+./scripts/wrangler.sh d1 execute "$LEPTOS_D1_NAME" --local --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
 
 Expected: `todos` and `contact_submissions` appear in the result.
@@ -152,7 +156,7 @@ Decision point: if the build fails with a `wasm-bindgen` version mismatch error,
 ### 2.5 Verify the build artifact
 
 ```bash
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 ```
 
 This validates the `wrangler.toml` config and the build output without uploading anything. Expected output ends with `Total Upload:` and does not contain `error`.
@@ -185,14 +189,14 @@ Use this checklist. Work through it top to bottom; each item that applies requir
 
 **Do you need a new database table?**
 - Create `migrations/NNNN_<name>.sql` (increment N from the last migration file).
-- Apply local: `bunx wrangler d1 migrations apply "$LEPTOS_D1_NAME" --local`
+- Apply local: `./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local`
 - Apply remote after the feature is complete and tested locally.
 
 **Do you need a new server function?**
-- Declare the types in `src/api.rs`: request struct (if needed) and response type. Both must derive `Serialize`, `Deserialize`, `Clone`.
-- Add the `#[server(...)]` function in `src/api.rs`. The body must be wrapped in `SendWrapper::new(async move { ... }).await` — see existing server functions for the exact pattern.
+- Declare shared types and validation in the domain owner (`src/todos.rs` or `src/contact_fields.rs`), with API reexports when needed. Both must derive `Serialize`, `Deserialize`, `Clone`.
+- Add the `#[server(...)]` function in `src/api.rs`. Delegate through `crate::server::run(...)`, which owns the Worker-to-Leptos Send bridge.
 - Add the database implementation function in `src/server/todos.rs` (or a new file under `src/server/`). Register any new module in `src/server/mod.rs`.
-- Server functions call `use_context::<AppState>()` via the `database()` helper in `todos.rs`. Do not use global state.
+- Domain server operations obtain request-scoped database and session identity together through `request_database()` in `src/server/d1.rs`. Do not use global state.
 
 **Do you need a new page or route?**
 - Create the component file in `src/components/<name>.rs`.
@@ -215,15 +219,15 @@ Use this checklist. Work through it top to bottom; each item that applies requir
 | Full bootstrap | `./scripts/bootstrap.sh` |
 | Read D1 database inventory | `cfctl call d1-list-databases ... --json` |
 | Prepare D1 creation plan | `cfctl call d1-create-database ... --body-stdin --json` |
-| Apply migrations (local) | `bunx wrangler d1 migrations apply "$LEPTOS_D1_NAME" --local` |
+| Apply migrations (local) | `./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local` |
 | Derive production config | `bun scripts/write-production-config.mjs --worker ... --database ... --database-id ...` |
 | Apply reviewed migrations (remote) | Complete pinned example in §2.3; operation ID comes from the adopted pack |
-| Execute SQL (local) | `bunx wrangler d1 execute "$LEPTOS_D1_NAME" --local --command "..."` |
+| Execute SQL (local) | `./scripts/wrangler.sh d1 execute "$LEPTOS_D1_NAME" --local --command "..."` |
 | Verify remote schema | Governed bounded schema-introspection/read capability |
 | Build (release) | `bash ./scripts/build-edge.sh` |
 | Type-check SSR only | `cargo check --features ssr` |
-| Local dev server | `bunx wrangler dev --local --ip 127.0.0.1 --port 57581` |
-| Validate before deploy | `bunx wrangler deploy --dry-run` |
+| Local dev server | `./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581` |
+| Validate before deploy | `./scripts/wrangler.sh deploy --dry-run` |
 | Prepare production deploy | Complete account/profile/config/name/message-pinned example in §2.6 |
 | Production secrets | Governed secret capability with secret input/output sinks |
 
@@ -249,8 +253,9 @@ Before editing any file, confirm it matches the kind of change you are making.
 | WebSocket ingress contract | `scripts/write-worker-shim.mjs`, `docs/realtime.md` |
 | Shared realtime state | `patterns/realtime-durable-object/` first, then `wrangler.toml` and `scripts/write-worker-shim.mjs` when adopting |
 | Local dev secrets | `.dev.vars` (create if absent; never commit this file) |
-| Production secrets | `bunx wrangler secret put ...` (stored in CF, not in files) |
-| Worker entry point + app state wiring | `src/server/state.rs`, `src/lib.rs` |
+| Production secrets | `./scripts/wrangler.sh secret put ...` (stored in CF, not in files) |
+| Worker event and HTTP boundary | `src/lib.rs`, `src/edge/` |
+| Request-scoped database/session | `src/server/state.rs`, `src/server/d1.rs` |
 | Rust dependencies | `Cargo.toml` |
 
 Do not edit `src/lib.rs` for feature work. It contains only the Worker `fetch` entry point and the WASM `hydrate` export. Change it only if the routing or app state wiring needs to change.
@@ -273,7 +278,7 @@ cargo check --features ssr
 bash ./scripts/build-edge.sh
 
 # Step 3: Deployment structure validation
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 ```
 
 Before pushing or declaring a change complete, run the full release readiness verification instead:
@@ -299,7 +304,7 @@ Required proof after touching realtime routing:
 ```bash
 bash ./scripts/build-edge.sh
 bun ./scripts/verify-worker-runtime.mjs
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 ```
 
 **`error: wasm-bindgen version mismatch`**
@@ -323,19 +328,14 @@ bash ./scripts/build-edge.sh
 
 Cloudflare Workers use a single-threaded runtime. The `worker` crate types (`D1Database`, `Env`, etc.) are not `Send`. Leptos server functions require `Send` futures by default.
 
-The fix is already demonstrated in `src/api.rs`: wrap the async block with `SendWrapper::new(async move { ... }).await`. Every server function body that touches `AppState` or D1 must use this wrapper.
+The bridge is owned by `src/server/mod.rs`: `run` uses `SendWrapper` for the non-Send Worker future. Server declarations in `src/api.rs` delegate to it; new commands should reuse that bridge.
 
 ```rust
 #[server(MyFn)]
 pub async fn my_fn() -> Result<MyType, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::my_module::my_impl()
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::my_module::my_impl()).await
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -351,7 +351,7 @@ pub async fn my_fn() -> Result<MyType, ServerFnError> {
 For local development, apply the local migration:
 
 ```bash
-bunx wrangler d1 migrations apply "$LEPTOS_D1_NAME" --local
+./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local
 ```
 
 For production, inspect the provider schema and prepare the repository-owned operation read from `.cfctl/operations/d1-migrations.toml`. If it is blocked, stop and resolve that contract rather than running a direct remote command.
@@ -372,7 +372,7 @@ Rust requires explicit module registration. If you created `src/server/my_module
 
 **`Missing app state in Leptos server function context`**
 
-`AppState` is injected into the Leptos context in `src/lib.rs` via `.leptos_routes_with_context`. If you see this error, the server function ran outside the context scope — this should not happen unless you modified `src/lib.rs`. Do not call server implementation functions from outside a server function.
+`AppState` is injected into the Leptos context in `src/edge/mod.rs` via `.leptos_routes_with_context`. If you see this error, the server function ran outside the context scope — this should not happen unless you modified the edge context wiring. Do not call server implementation functions from outside a server function.
 
 ---
 
@@ -380,9 +380,19 @@ Rust requires explicit module registration. If you created `src/server/my_module
 
 The requested todo ID does not exist. This is a logic error in the caller, not an infrastructure issue. Verify the ID being passed to `toggle_todo` or `delete_todo` exists in the database.
 
+## Executable resource workflow
+
+Use [Resource Explorer](../patterns/resource-explorer/README.md) for a collection, related records, and draft/review/save flow. The gallery and recipe use the same components. `SearchTodos` filters before the result limit; `UpdateTodo` validates and compares saved fields in session-scoped D1. No new binding or migration is required.
+
 ## Application adoption
 
 Use `docs/adopting.md` for the supported name and page cutover. The initializer
 preserves application code and schema. `Cargo.toml` selects reference-site
 checks explicitly; shared runtime/security checks remain required for every
 adopter. The complete gate now requires cargo-audit; absence fails before build.
+
+
+Local tooling uses the exact Wrangler dependency in `package.json` and `bun.lock`; run `bun install --frozen-lockfile` (also done by bootstrap). The verification dry run launches this local CLI with a Node preload that validates and forwards the original Disk Guard descriptors. It still executes the configured build. API requests with bodies use an isolated request clone so cancellation by the Rust body adapter cannot reset the local Workers proxy; the Rust 4 KiB rejection remains authoritative.
+
+
+For the standalone source-size inventory, run `bun scripts/check-file-limits.mjs`; see [repository cleanup and exception rules](repository-cleanup.md). Its regression fixtures run in the existing gate, while unresolved size exceptions remain a separate reported condition.

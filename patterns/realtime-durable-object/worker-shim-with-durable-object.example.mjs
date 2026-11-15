@@ -1,29 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 import LeptosWorker from "./index.js";
+import { withDispatch } from "./dispatch.mjs";
+const SharedWorker = withDispatch(LeptosWorker);
 
-const REALTIME_SOCKET_PATH = "/realtime/socket";
 const DEFAULT_ROOM = "lobby";
 const MAX_ROOM_NAME_LENGTH = 64;
 const MAX_MESSAGE_LENGTH = 1_000;
-
-const STATIC_ASSET_PATHS = [
-  "/asset-manifest.json",
-  "/app-icon.svg",
-  "/app-icon-192.png",
-  "/app-icon-512.png",
-  "/apple-touch-icon.png",
-  "/favicon.svg",
-  "/site.webmanifest",
-];
-
-const STATIC_ASSET_PREFIXES = [
-  "/pkg/",
-];
-
-function shouldServeAsset(pathname) {
-  return STATIC_ASSET_PATHS.includes(pathname)
-    || STATIC_ASSET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-}
 
 function isWebSocketUpgrade(request) {
   return request.headers.get("Upgrade")?.toLowerCase() === "websocket";
@@ -146,7 +128,7 @@ export class RealtimeRoom extends DurableObject {
   }
 
   async webSocketClose(_ws, _code, _reason, _wasClean) {
-    // With this repo's 2026-04-22 compatibility date, Cloudflare auto-replies to close frames.
+    // With this repo's compatibility date, Cloudflare auto-replies to close frames.
   }
 
   broadcast(room, payload) {
@@ -160,26 +142,8 @@ export class RealtimeRoom extends DurableObject {
   }
 }
 
-export default class extends LeptosWorker {
-  async fetch(request) {
-    const url = new URL(request.url);
-
-    if (isWebSocketUpgrade(request)) {
-      if (url.pathname === REALTIME_SOCKET_PATH) {
-        return handleRealtimeSocket(request, this.env);
-      }
-
-      return new Response("Unknown WebSocket route.", { status: 404 });
-    }
-
-    if (url.pathname === REALTIME_SOCKET_PATH) {
-      return websocketUpgradeRequired();
-    }
-
-    if (shouldServeAsset(url.pathname)) {
-      return this.env.ASSETS.fetch(request);
-    }
-
-    return super.fetch(request);
+export default class extends SharedWorker {
+  handleRealtimeSocket(request) {
+    return handleRealtimeSocket(request, this.env);
   }
 }

@@ -33,7 +33,7 @@ pub fn StartPage() -> impl IntoView {
                 </article>
                 <article class="command-step">
                     <span class="command-step__number">"03"</span>
-                    <div><h2>"Prepare local D1"</h2><p>"Apply checked-in migrations to the local replica. This does not mutate the remote database."</p><code>"CI=1 bunx wrangler@4.120.1 d1 migrations apply leptos-cf-db --local"</code></div>
+                    <div><h2>"Prepare local D1"</h2><p>"Apply checked-in migrations to the local replica. This does not mutate the remote database."</p><code>"CI=1 ./scripts/wrangler.sh d1 migrations apply leptos-cf-db --local"</code></div>
                 </article>
                 <article class="command-step">
                     <span class="command-step__number">"04"</span>
@@ -41,7 +41,7 @@ pub fn StartPage() -> impl IntoView {
                 </article>
                 <article class="command-step">
                     <span class="command-step__number">"05"</span>
-                    <div><h2>"Run locally"</h2><p>"Serve the Worker, Assets binding, SSR fallback, and local D1 at one origin."</p><code>"CI=1 bunx wrangler@4.120.1 dev --local --ip 127.0.0.1 --port 57581"</code></div>
+                    <div><h2>"Run locally"</h2><p>"Serve the Worker, Assets binding, SSR fallback, and local D1 at one origin."</p><code>"CI=1 ./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581"</code></div>
                 </article>
                 <article class="command-step command-step--gate">
                     <span class="command-step__number">"06"</span>
@@ -53,7 +53,7 @@ pub fn StartPage() -> impl IntoView {
                 <EvidenceTag kind=EvidenceKind::Unproven/>
                 <div>
                     <h2 id="start-caveat-title">"Production is not initialized yet."</h2>
-                    <p>"The checked-in `wrangler.toml` deliberately contains placeholder D1 identifiers. Creating provider resources, applying remote migrations, and deploying are separate governed changes. The current `scripts/init.sh` path is not part of this verified start sequence; prefer an explicit, reviewed application cutover."</p>
+                    <p>"The checked-in `wrangler.toml` deliberately contains placeholder D1 identifiers. Creating provider resources, applying remote migrations, and deploying are separate governed changes. The local `scripts/init.sh` command adopts the application name while preserving source and migrations; it does not initialize production. Follow the adoption guide before provider cutover."</p>
                 </div>
             </section>
 

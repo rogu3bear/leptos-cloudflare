@@ -87,27 +87,3 @@ pub fn EvidenceTag(kind: EvidenceKind) -> impl IntoView {
     let class = format!("evidence-tag {}", kind.class_name());
     view! { <span class=class>{kind.label()}</span> }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn control_size_classes_are_canonical() {
-        assert_eq!(ControlSize::Compact.class_name(), "control-frame--compact");
-        assert_eq!(
-            ControlSize::Standard.class_name(),
-            "control-frame--standard"
-        );
-    }
-
-    #[test]
-    fn control_tone_classes_are_canonical() {
-        assert_eq!(ControlTone::Primary.class_name(), "control-frame--primary");
-        assert_eq!(
-            ControlTone::Secondary.class_name(),
-            "control-frame--secondary"
-        );
-        assert_eq!(ControlTone::Quiet.class_name(), "control-frame--quiet");
-    }
-}

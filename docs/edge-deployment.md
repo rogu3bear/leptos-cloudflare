@@ -655,7 +655,7 @@ No free tier. Requires Workers Paid plan.
 
 The public route tree is `/`, `/start`, `/architecture`, `/patterns`, `/lab`, `/about`, and `/contact`, with `/lab/:id` as the dynamic specimen. Workers Static Assets serves exact `/pkg/*` and identity-file matches before user Worker code. Requests without an asset match reach the generated Worker shim and fall through to Leptos SSR, except for the dedicated `/realtime/socket` capability route.
 
-The checked-in deployment is a Workers Static Assets application, not a Pages project. Pages Functions also execute on the Workers runtime, but introducing Pages would add another project, router, deployment, and proof contract. Keep the single Workers lane unless a named consumer justifies and owns that separation.
+Workers is the default deployment. The separate Pages option below packages the same handler in advanced mode and has its own project, bindings and release proof.
 
 The production configuration samples 10% of invocation logs and 1% of traces. The Worker shim creates a custom span for only the closed `ssr`/`server_function` boundary after static-asset and WebSocket exits. Rust emits one versioned completion record with only closed route/function, method, outcome, status, and duration dimensions; raw paths/queries, identifiers, headers/cookies, bodies, IP/user-agent values, D1 identifiers, and internal error text are forbidden. Sampling makes provider telemetry useful without treating every request as a required retained event. Configuration is only source intent; confirm deployed settings and representative signals through readback after an authorized apply.
 
@@ -676,3 +676,17 @@ wrangler tail
 Apply migrations before or immediately after deploying code that depends on new schema. The migration system is append-only — never modify an existing migration file.
 
 For this operator's Cloudflare account, the commands above are explanatory only. Production mutation follows the governed `cfctl` plan/approval/run/status/readback workflow named in the repository doctrine. `wrangler.production.toml` is an input bound into those plans, never tracked source authority. Keep D1 creation, remote schema application, Worker deployment, provider readback, and live route/telemetry proof as distinct receipts.
+
+
+## Pages option
+
+**Experimental:** the current source passes local Workers and Pages runtime qualification and the complete local gate. Production Pages remains deferred below.
+
+Pages [advanced mode](https://developers.cloudflare.com/pages/functions/advanced-mode/) runs the packaged module worker for all requests and provides `ASSETS`. The output uses a single `_worker.js` so the pinned Wrangler module collector handles the server WASM. The packaging script copies the generated shim and its module graph plus `target/site`; it does not alter the Workers build. It rejects `_routes.json`, so Pages sends all requests to the handler, which blocks direct access to the packaged `/_server/` modules. Do not add route exclusions that bypass that protection. `_headers` supplies the existing static cache policy. The template exposes only `/realtime/socket` as a capability check; shared state still needs a separately owned Durable Object.
+
+Run the Pages local commands in the README. `pages/wrangler.toml` is separate from `wrangler.toml` and must remain placeholder-only. **Production Pages is deferred:** an isolated standard-config location and its migration, deployment, and readback workflow have not been qualified. Do not put real IDs in the tracked file or assume Pages accepts an arbitrary `--config` path. Before production, qualify a separate configuration and release path under the applicable owner's authority, with distinct preview and production D1 identities, committed migrations, and independent provider and live-behavior verification. [Cloudflare's Pages configuration documentation](https://developers.cloudflare.com/pages/functions/wrangler-configuration/) describes the provider contract; the existing Workers production-config generator and cfctl operation are not Pages deployment authority.
+
+The package command requires an empty output directory under the project `target` directory or the system temporary directory. It rejects symlinked output paths and assets, plus the reserved `_worker.js`, `_server`, and `_routes.json` source names. It records the actual files present at packaging time so the handler can serve adopter assets and send missing paths to SSR; repackage after changing assets. For a repeat local build, select a fresh output and matching Pages config, or intentionally remove only your own obsolete generated output. Run `LEPTOS_TEST_PAGES=1 bun scripts/test-worker-boundaries.mjs` after building for the local Pages boundary test.
+
+
+Local tooling uses the exact Wrangler dependency in `package.json` and `bun.lock`; run `bun install --frozen-lockfile` (also done by bootstrap). The verification dry run launches this local CLI with a Node preload that validates and forwards the original Disk Guard descriptors. It still executes the configured build. API requests with bodies use an isolated request clone so cancellation by the Rust body adapter cannot reset the local Workers proxy; the Rust 4 KiB rejection remains authoritative.

@@ -1,0 +1,10 @@
+name = "leptos-cf"
+pages_build_output_dir = "../target/pages"
+compatibility_date = "2026-08-10"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "leptos-cf-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+preview_database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "../migrations"

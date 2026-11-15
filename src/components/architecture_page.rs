@@ -70,7 +70,7 @@ pub fn ArchitecturePage() -> impl IntoView {
                 <header class="plate__header">
                     <p class="plate__label">"Platform decision"</p>
                     <div>
-                        <h2 id="platform-decision-title">"Workers owns the full-stack lane."</h2>
+                        <h2 id="platform-decision-title">"Choose the full-stack deployment target."</h2>
                         <p>"Workers and Pages can both reach the Workers runtime, but they create different project, routing, deployment, and proof boundaries."</p>
                     </div>
                 </header>
@@ -88,25 +88,25 @@ pub fn ArchitecturePage() -> impl IntoView {
                             <tr>
                                 <th scope="row">"What deploys?"</th>
                                 <td>"The Worker and `target/site` assets deploy as one unit."</td>
-                                <td>"A Pages project deploys static output; Pages Functions add server execution."</td>
-                                <td><strong>"Workers"</strong></td>
+                                <td>"The experimental Pages package targets the same handler and assets in advanced mode."</td>
+                                <td><strong>"Choose one"</strong></td>
                             </tr>
                             <tr>
                                 <th scope="row">"Who owns routing?"</th>
                                 <td>"The platform asset router serves exact files; non-assets reach the generated Worker entrypoint."</td>
-                                <td>"Pages routing and any Functions adapter become another maintained contract."</td>
-                                <td>"Keep one routing owner"</td>
+                                <td>"The advanced-mode handler receives every request and forwards assets."</td>
+                                <td>"Separate routing contracts"</td>
                             </tr>
                             <tr>
                                 <th scope="row">"When is it justified?"</th>
                                 <td>"The current SSR, server-function, D1, Assets, and realtime boundaries need one runtime."</td>
-                                <td>"A named consumer already requires a separate Pages project or Pages-native workflow."</td>
-                                <td>"No Pages lane yet"</td>
+                                <td>"Choose Pages for a Pages project and its deployment workflow."</td>
+                                <td>"Pages experimental"</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="decision-note"><strong>"Checked in now:"</strong> "the Workers lane has executable rendering/network boundaries, a current compatibility date, and sampled production observability. Next, an authorized deployment must earn provider readback and live evidence. Add Pages only with a named consumer and an independent maintenance and release-proof owner."</p>
+                <p class="decision-note"><strong>"Checked in now:"</strong> "The Pages local runtime is verified; its production release path remains experimental. Workers remains the default. An authorized deployment must earn provider readback and live evidence."</p>
             </section>
 
             <section class="plate" aria-labelledby="asset-router-title">

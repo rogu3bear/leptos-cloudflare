@@ -176,16 +176,11 @@ fn TodoBoard(
     let has_items = !items.is_empty();
     let items = std::sync::Arc::new(items);
 
-    // Demonstrates fine-grained reactivity with Memo.
-    // This derived value only recomputes when `stats` changes,
-    // and only the nodes that read it will update.
-    let completion_rate = Memo::new(move |_| {
-        if stats.total == 0 {
-            0
-        } else {
-            (stats.completed as f32 / stats.total as f32 * 100.0) as i32
-        }
-    });
+    let completion_rate = if stats.total == 0 {
+        0
+    } else {
+        (stats.completed as f32 / stats.total as f32 * 100.0) as i32
+    };
     let list_or_empty = if has_items {
         view! {
             <ul class="todo-list">

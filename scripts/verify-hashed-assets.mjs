@@ -4,39 +4,13 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-
-function runOrThrow(cmd, args) {
-  const proc = Bun.spawnSync([cmd, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    cwd: process.cwd(),
-  });
-
-  if (proc.exitCode !== 0) {
-    const stderr = new TextDecoder().decode(proc.stderr).trim();
-    throw new Error(stderr || `${cmd} exited with code ${proc.exitCode}`);
-  }
-
-  return new TextDecoder().decode(proc.stdout);
-}
+import { projectMetadata } from "./project-metadata.mjs";
 
 async function main() {
-  const metadata = JSON.parse(
-    runOrThrow("cargo", ["metadata", "--no-deps", "--format-version", "1"]),
-  );
-  const workspaceRoot = metadata.workspace_root;
-  const rootPackage = metadata.packages.find(
-    (pkg) => pkg.manifest_path === join(workspaceRoot, "Cargo.toml"),
-  );
-
-  if (!rootPackage?.metadata?.leptos) {
-    throw new Error("missing package.metadata.leptos");
-  }
-
-  const leptos = rootPackage.metadata.leptos;
+  const { root: workspaceRoot, leptos, assetPrefix, paths } = await projectMetadata();
   const outputName = leptos["output-name"];
-  const siteRoot = join(workspaceRoot, leptos["site-root"]);
-  const pkgDir = join(siteRoot, leptos["site-pkg-dir"]);
+  const siteRoot = paths.site;
+  const pkgDir = paths.pkg;
 
   const manifestPath = join(siteRoot, "asset-manifest.json");
   const generatedHashesPath = join(workspaceRoot, "target/asset-hashes.env");
@@ -62,7 +36,7 @@ async function main() {
     css: manifest.css,
   })) {
     const hash = manifest.hashes?.[kind];
-    if (!/^[a-f0-9]{16}$/.test(hash ?? "") || href !== `/pkg/${outputName}.${hash}.${kind}`) {
+    if (!/^[a-f0-9]{16}$/.test(hash ?? "") || href !== `${assetPrefix}${outputName}.${hash}.${kind}`) {
       throw new Error(`${kind} manifest entry is not hashed: ${href}`);
     }
 
@@ -93,7 +67,7 @@ async function main() {
   }
 
   for (const requiredSnippet of [
-    "/pkg/*",
+    `${assetPrefix}*`,
     "Cache-Control: public, max-age=31536000, immutable",
     "/asset-manifest.json",
     "Cache-Control: no-store",

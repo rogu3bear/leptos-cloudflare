@@ -1,48 +1,53 @@
 use leptos::prelude::*;
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "ssr")]
 use crate::contact::ContactSubmissionInput;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TodoItem {
-    pub id: i64,
-    pub title: String,
-    pub completed: bool,
-    pub created_at: String,
+pub use crate::contact_fields::ContactResponse;
+pub use crate::todos::{normalize_todo_title, TodoItem, TodoUpdateOutcome, TodosResponse};
+
+#[server(name = SearchTodos, endpoint = "search_todos")]
+pub async fn search_todos(query: String, status: String) -> Result<TodosResponse, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        crate::server::run(crate::server::todos::search_todos(query, status)).await
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("server functions only execute on the server")
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TodoStats {
-    pub total: usize,
-    pub open: usize,
-    pub completed: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TodosResponse {
-    pub items: Vec<TodoItem>,
-    pub stats: TodoStats,
-    pub visible_limit: usize,
-    pub is_truncated: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ContactResponse {
-    pub accepted: bool,
-    pub message: String,
+#[server(name = UpdateTodo, endpoint = "update_todo")]
+pub async fn update_todo(
+    id: i64,
+    title: String,
+    completed: bool,
+    expected_title: String,
+    expected_completed: bool,
+) -> Result<TodoUpdateOutcome, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        crate::server::run(crate::server::todos::update_todo(
+            id,
+            title,
+            completed,
+            expected_title,
+            expected_completed,
+        ))
+        .await
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("server functions only execute on the server")
+    }
 }
 
 #[server(ListTodos)]
 pub async fn list_todos() -> Result<TodosResponse, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::todos::list_todos()
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::todos::list_todos()).await
     }
 
     #[cfg(not(feature = "ssr"))]
@@ -55,12 +60,7 @@ pub async fn list_todos() -> Result<TodosResponse, ServerFnError> {
 pub async fn create_todo(title: String) -> Result<TodoItem, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::todos::create_todo(title)
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::todos::create_todo(title)).await
     }
 
     #[cfg(not(feature = "ssr"))]
@@ -73,12 +73,7 @@ pub async fn create_todo(title: String) -> Result<TodoItem, ServerFnError> {
 pub async fn toggle_todo(id: i64) -> Result<TodoItem, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::todos::toggle_todo(id)
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::todos::toggle_todo(id)).await
     }
 
     #[cfg(not(feature = "ssr"))]
@@ -91,12 +86,7 @@ pub async fn toggle_todo(id: i64) -> Result<TodoItem, ServerFnError> {
 pub async fn delete_todo(id: i64) -> Result<(), ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::todos::delete_todo(id)
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::todos::delete_todo(id)).await
     }
 
     #[cfg(not(feature = "ssr"))]
@@ -109,12 +99,7 @@ pub async fn delete_todo(id: i64) -> Result<(), ServerFnError> {
 pub async fn get_todo(id: i64) -> Result<TodoItem, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::todos::get_todo(id)
-                .await
-                .map_err(crate::server::server_error)
-        })
-        .await
+        crate::server::run(crate::server::todos::get_todo(id)).await
     }
 
     #[cfg(not(feature = "ssr"))]
@@ -133,17 +118,15 @@ pub async fn submit_contact(
 ) -> Result<ContactResponse, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        send_wrapper::SendWrapper::new(async move {
-            crate::server::contact::submit_contact(ContactSubmissionInput {
+        crate::server::run(crate::server::contact::submit_contact(
+            ContactSubmissionInput {
                 name,
                 email,
                 topic,
                 message,
                 website,
-            })
-            .await
-            .map_err(crate::server::server_error)
-        })
+            },
+        ))
         .await
     }
 

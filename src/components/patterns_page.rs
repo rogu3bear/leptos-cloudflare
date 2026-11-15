@@ -15,6 +15,11 @@ pub fn PatternsPage() -> impl IntoView {
                 <div class="page-intro__aside"><EvidenceTag kind=EvidenceKind::Source/><p>"Availability means a checked-in implementation or documented adoption lane, not a hosted feature."</p></div>
             </header>
 
+            <section class="launch-strip" aria-labelledby="resource-recipe-title">
+                <div><p class="eyebrow">"Executable workflow 01"</p><h2 id="resource-recipe-title">"Explore, edit, review, save."</h2><p>"Searchable records, linked context, and drafts that survive failed saves."</p></div>
+                <ActionLink href="/patterns/resource-explorer">"Try resource explorer"</ActionLink>
+            </section>
+
             <section class="pattern-index" aria-label="Pattern index">
                 <article class="pattern-card pattern-card--core"><span>"Core · included"</span><h2>"SSR + hydration"</h2><p>"Useful HTML at the edge, then browser interaction from the same Leptos application."</p><code>"src/app.rs · src/lib.rs"</code></article>
                 <article class="pattern-card pattern-card--core"><span>"Core · included"</span><h2>"Typed server functions"</h2><p>"A public client/server boundary with server-side validation and explicit error mapping."</p><code>"src/api.rs"</code></article>

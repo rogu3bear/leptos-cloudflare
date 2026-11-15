@@ -77,5 +77,8 @@ Minimum local proof:
 ```bash
 bash ./scripts/build-edge.sh
 bun ./scripts/verify-worker-runtime.mjs
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 ```
+
+
+Pages advanced mode packages the same generated shim in `_worker.js` and sends every request to it. Its local preview must independently prove the upgrade and HTTP boundaries; shared-state guidance above applies to both targets. See [Pages setup](edge-deployment.md#pages-option).

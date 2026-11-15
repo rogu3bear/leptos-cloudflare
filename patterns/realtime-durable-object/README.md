@@ -16,7 +16,7 @@ The core template stays minimal by keeping `/realtime/socket` as a capability en
 - `worker-shim-with-durable-object.example.mjs` shows the generated Worker shim shape after adoption: `/realtime/socket` validates the upgrade, derives a room key, and forwards the original upgrade request to `env.REALTIME_ROOM.getByName(room).fetch(request)`.
 - `wrangler.durable-object.example.toml` shows the Durable Object binding and SQLite-backed migration block to add to `wrangler.toml`.
 
-Do not edit `build/_worker.js` directly. It is generated. Copy the handoff and `RealtimeRoom` export into `scripts/write-worker-shim.mjs` so the build keeps regenerating the same runtime contract.
+Do not edit `build/_worker.js` directly. It is generated. The example composes `withDispatch` from `runtime/dispatch.mjs` and overrides only `handleRealtimeSocket`; it does not replace asset, API-stream or telemetry handling. When adopting it, make `scripts/write-worker-shim.mjs` copy the adopted example to `build/_worker.js` after copying the shared dispatch module. Keep its imports `./index.js` and `./dispatch.mjs`; do not import the generated entry into itself. The Durable Object class export and binding are then part of that adopted entry.
 
 ## Core Pattern
 
@@ -91,7 +91,7 @@ After adopting the pattern into the core runtime, run:
 ```bash
 bash ./scripts/build-edge.sh
 bun ./scripts/verify-worker-runtime.mjs
-bunx wrangler@4.120.1 deploy --dry-run
+./scripts/wrangler.sh deploy --dry-run
 ```
 
 Before claiming the repository is release-ready, run the full gate:

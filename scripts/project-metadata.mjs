@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 export async function projectMetadata(root = process.cwd()) {
   if (typeof Bun.TOML?.parse !== "function") {
@@ -14,5 +14,16 @@ export async function projectMetadata(root = process.cwd()) {
   if (!/^[a-z][a-z0-9-]*$/.test(leptos["output-name"])) {
     throw new Error("Leptos output-name must contain lowercase letters, digits, and hyphens");
   }
-  return { cargo, leptos, referenceSite };
+  if (leptos["site-root"] !== "target/site" || leptos["site-pkg-dir"] !== "pkg") {
+    throw new Error("The edge runtime requires site-root target/site and site-pkg-dir pkg; routing and asset headers share this contract");
+  }
+  root = resolve(root);
+  const assetPrefix = `/${leptos["site-pkg-dir"].replace(/^\/+|\/+$/g, "")}/`;
+  const site = resolve(root, leptos["site-root"]);
+  return { root, cargo, leptos, referenceSite, assetPrefix, paths: {
+    site, pkg: resolve(site, leptos["site-pkg-dir"]),
+    manifest: join(site, "asset-manifest.json"),
+    hashes: join(root, "target/asset-hashes.env"),
+    worker: join(root, "build"),
+  } };
 }
