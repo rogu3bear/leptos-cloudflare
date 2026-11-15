@@ -22,6 +22,7 @@ require_command() {
 require_command rustup "Rustup is required. Install it from https://rustup.rs/."
 require_command cargo "Cargo is required. Install Rust from https://rustup.rs/."
 require_command bun "Bun is required. Install it from https://bun.sh/."
+require_command node "Node.js 22 or later is required by Wrangler. Install it from https://nodejs.org/."
 EXPECTED_WRANGLER_VERSION="$(expected_wrangler_version)"
 
 wrangler_cmd() {

@@ -208,7 +208,7 @@ cargo install cargo-leptos --locked --version 0.3.7
 cargo install worker-build --locked --version 0.7.5
 ```
 
-This template uses `./scripts/wrangler.sh`, so a global Wrangler install is not required. You do need [Bun](https://bun.sh/). `wasm-bindgen-cli` is installed into `var/cargo-tools/` from the version resolved in `Cargo.lock`, so the build does not depend on whichever global `wasm-bindgen` happens to be on `PATH`.
+This template uses `./scripts/wrangler.sh`, so a global Wrangler install is not required. You need [Bun](https://bun.sh/) and [Node.js 22 or later](https://nodejs.org/), as required by the pinned Wrangler CLI. Wrangler rejects unsupported Node versions. `wasm-bindgen-cli` is installed into `var/cargo-tools/` from the version resolved in `Cargo.lock`, so the build does not depend on whichever global `wasm-bindgen` happens to be on `PATH`.
 
 ### Bootstrap scripts
 

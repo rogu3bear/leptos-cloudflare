@@ -32,6 +32,7 @@ check_command() {
 check_command rustup "Install Rust from https://rustup.rs/."
 check_command cargo "Install Rust from https://rustup.rs/."
 check_command bun "Install Bun from https://bun.sh/."
+check_command node "Wrangler requires Node.js 22 or later. Install it from https://nodejs.org/."
 if [ "$missing" -ne 0 ]; then exit 1; fi
 EXPECTED_WRANGLER_VERSION="$(expected_wrangler_version)"
 
