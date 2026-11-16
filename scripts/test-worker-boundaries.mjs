@@ -154,7 +154,7 @@ async function main() {
       await testResourceExplorer(origin);
       await testContactIntake(origin, store);
     }
-    console.log(`[test-worker-boundaries] ${pagesMode ? "Pages" : "Workers"}: rendering, assets, guards, session data and WebSocket boundaries passed`);
+    console.log(`[test-worker-boundaries] ${pagesMode ? "Pages" : "Workers"}: rendering, assets, guards and WebSocket boundaries passed; ${referenceSite ? "reference D1 workflows passed" : "sample-domain checks excluded by the adopter profile"}`);
   });
 }
 

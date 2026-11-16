@@ -49,7 +49,7 @@ try {
     }
   });
   assert.deepEqual(await verifyReleaseFiles(output), manifest, "local qualification must not change release files");
-  console.log("[pages-production] isolated standard config, both native upload bundles, local migrations, SSR/CSP, private modules and persisted workflows passed; no provider operation executed");
+  console.log(`[pages-production] isolated standard config, both native upload bundles, local migrations, SSR/CSP and private modules passed; ${referenceSite ? "reference D1 workflows passed" : "sample-domain checks excluded by the adopter profile"}; no provider operation executed`);
 } finally {
   if (owned) await rm(output, { recursive: true, force: true });
 }
