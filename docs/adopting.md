@@ -77,6 +77,22 @@ Local proof, publication, deployment, and observed application behavior are
 separate completion claims.
 
 
-## Experimental Pages follow-up
+## Pages production follow-up
 
-The Pages package is not yet release-ready: local runtime qualification passes, but its production release path remains deferred. To continue qualification after renaming to `my-app`, build and package into a fresh `target/pages`, then from `pages/` apply local migrations with `CI=1 ../scripts/wrangler.sh d1 migrations apply my-app-db --local` and start `../scripts/wrangler.sh pages dev`. Prove SSR, hydration, D1, boundaries and both deployment paths before using it. Pages project identity, production D1 bindings and remote migration/deployment need their own authorized cutover and readback; the Workers config generator does not establish them.
+After adoption, commit the intended source and run the complete local gate.
+Follow [Pages production qualification](pages-production.md) to derive a fresh
+ignored release directory from verified account/project/production-branch and
+separate production/preview D1 identities. The local gate qualifies the standard
+config, both native upload bundles, ordered migrations and runtime persistence.
+The Workers config generator does not establish Pages identity. Provider
+migration, deployment, authenticated readback and live acceptance remain separate
+authorized operations; local qualification does not establish a deployed app.
+
+The build settles Cargo metadata before recording source provenance. Cargo may
+reorder the renamed package's lockfile entry; review and commit that generated
+change before claiming a clean release. Source changes during compilation still
+fail the build. In a Disk Guard workspace, the heavy adoption test supports
+`--fixture <fresh-system-temp-path>` so the original operation parent can declare
+that exact `child_workspaces` entry before admission. Forward the genuine
+descriptors and supply `LEPTOS_ACCEPTANCE_BUILD_BUDGET_GB` from the caller's
+existing allowance; never clear inheritance or expand delegation in a child.

@@ -6,7 +6,7 @@ Portable instruction set for any coding agent working on this Leptos + Cloudflar
 
 ## Start here
 
-Read the README Quick Start, inspect the checkout and preserve existing changes. Ask the project owner which target they intend to use; Workers is the default. The experimental Pages package is intended to share SSR, hydration, server functions and D1, and its local runtime has passed qualification. Workers uses `wrangler.toml` and `build/_worker.js`; Pages uses `pages/wrangler.toml` and a separately packaged advanced-mode output. Follow the Pages option in [edge deployment](edge-deployment.md#pages-option). Local development does not need a provider credential. Make the requested change, run the relevant checks, and run `./scripts/verify.sh` before claiming release readiness. Provider changes need the applicable owner's authority.
+Read the README Quick Start, inspect the checkout and preserve existing changes. Ask the project owner which target they intend to use; Workers is the default. The Pages package shares SSR, hydration, server functions and D1; its local runtime and production preparation path pass qualification. See [Pages production](pages-production.md) for isolated configuration and readback. Workers uses `wrangler.toml` and `build/_worker.js`; Pages uses `pages/wrangler.toml` and a separately packaged advanced-mode output. Follow the Pages option in [edge deployment](edge-deployment.md#pages-option). Local development does not need a provider credential. Make the requested change, run the relevant checks, and run `./scripts/verify.sh` before claiming release readiness. Provider changes need the applicable owner's authority.
 
 ## 1. Prerequisites Check
 

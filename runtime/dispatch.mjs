@@ -50,7 +50,11 @@ export function withDispatch(LeptosWorker, { assetPaths = null, blockServerModul
 
   async fetch(request) {
     const url = new URL(request.url);
-    if (blockServerModules && (url.pathname === "/_server" || url.pathname.startsWith("/_server/"))) {
+    let assetPath;
+    try { assetPath = decodeURIComponent(url.pathname); } catch { assetPath = null; }
+    const normalizedPath = assetPath === null ? null : new URL(`https://assets.invalid${assetPath.replaceAll("\\", "/").replace(/\/{2,}/g, "/")}`).pathname;
+    const privateModulePath = (path) => ["/_server", "/functions"].some((prefix) => path === prefix || path?.startsWith(`${prefix}/`));
+    if (blockServerModules && (privateModulePath(url.pathname) || privateModulePath(normalizedPath))) {
       return new Response("Not found.", { status: 404 });
     }
 
@@ -69,8 +73,6 @@ export function withDispatch(LeptosWorker, { assetPaths = null, blockServerModul
       });
     }
 
-    let assetPath;
-    try { assetPath = decodeURIComponent(url.pathname); } catch { assetPath = null; }
     const applicationPath = assetPath === "/api" || assetPath?.startsWith("/api/") || assetPath === REALTIME_SOCKET_PATH;
     const exactPageAsset = pagesAssets?.has(assetPath) && !applicationPath;
     if (exactPageAsset || shouldServeAsset(url.pathname, assetPrefix)) {

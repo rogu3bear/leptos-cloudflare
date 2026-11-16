@@ -59,7 +59,8 @@ async function stopWorker(child, lifecycle) {
   }
 }
 
-export async function withLocalPreview({ root = process.cwd(), pages = false, migrate = false, readyPath = "/" }, use) {
+export async function withLocalPreview({ root = process.cwd(), pages = false, migrate = false, readyPath = "/", pagesReleaseDirectory = null }, use) {
+  assert(!pagesReleaseDirectory || pages, "a Pages release directory requires Pages mode");
   const pagesMode = pages;
   const documentPath = readyPath;
   const { paths } = await projectMetadata(root);
@@ -78,8 +79,8 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
   let output = "";
   const lifecycle = { closed: false, error: null, settled: null };
   try {
-  const pagesOutput = join(testDirectory, "pages");
-  if (pagesMode) {
+  const pagesOutput = pagesReleaseDirectory ? join(pagesReleaseDirectory, "public") : join(testDirectory, "pages");
+  if (pagesMode && !pagesReleaseDirectory) {
     const packageRoot = join(testDirectory, "fixture");
     await mkdir(join(packageRoot, "target"), { recursive: true });
     await mkdir(join(packageRoot, "build"));
@@ -90,7 +91,7 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
     const packaged = spawnSync("bun", [resolve(root, "scripts/package-pages.mjs"), pagesOutput], { cwd: packageRoot, encoding: "utf8" });
     if (packaged.status !== 0) throw new Error(`Pages packaging failed: ${packaged.stderr}`);
   }
-  const configPath = join(testDirectory, pagesMode ? "wrangler.toml" : "wrangler.test.toml");
+  const configPath = pagesReleaseDirectory ? join(pagesReleaseDirectory, "wrangler.toml") : join(testDirectory, pagesMode ? "wrangler.toml" : "wrangler.test.toml");
   const persistencePath = join(testDirectory, "state");
   const port = await reservePort();
   const inspectorPort = await reservePort();
@@ -109,10 +110,11 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
     `migrations_dir = ${JSON.stringify(resolve(root, "migrations"))}`,
     "",
   ].join("\n");
-  await writeFile(configPath, config);
+  if (!pagesReleaseDirectory) await writeFile(configPath, config);
+  const databaseName = Bun.TOML.parse(await readFile(configPath, "utf8")).d1_databases[0].database_name;
 
   if (migrate) {
-    const migration = spawnSync(resolve(root, "scripts/wrangler.sh"), [ "d1", "migrations", "apply", "leptos-cf-boundary-test", "--local", "--config", configPath, "--persist-to", persistencePath], {
+    const migration = spawnSync(resolve(root, "scripts/wrangler.sh"), [ "d1", "migrations", "apply", databaseName, "--local", "--config", configPath, "--persist-to", persistencePath], {
       cwd: root, env: { ...process.env, CI: "1", NO_COLOR: "1" }, encoding: "utf8",
     });
     if (migration.status !== 0) {
@@ -138,7 +140,7 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
       "--show-interactive-dev-session=false",
     ],
     {
-      cwd: pagesMode ? testDirectory : root,
+      cwd: pagesMode ? pagesReleaseDirectory ?? testDirectory : root,
       env: { ...process.env, CI: "1", NO_COLOR: "1" },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -158,7 +160,7 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
     await waitForWorker(origin, wrangler, () => output, documentPath, lifecycle);
     return await use(origin, {
       query(sql) {
-        const result = spawnSync(resolve(root, "scripts/wrangler.sh"), ["d1", "execute", "leptos-cf-boundary-test", "--local", "--config", configPath, "--persist-to", persistencePath, "--command", sql, "--json"], {
+        const result = spawnSync(resolve(root, "scripts/wrangler.sh"), ["d1", "execute", databaseName, "--local", "--config", configPath, "--persist-to", persistencePath, "--command", sql, "--json"], {
           cwd: root, env: { ...process.env, CI: "1", NO_COLOR: "1" }, encoding: "utf8",
         });
         if (result.status !== 0) throw new Error(`disposable D1 query failed: ${result.stderr}`);

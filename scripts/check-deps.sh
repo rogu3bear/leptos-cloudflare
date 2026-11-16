@@ -110,6 +110,17 @@ else
   fail "wrangler.production.toml must remain gitignored"
 fi
 
+if bun -e 'const c = Bun.TOML.parse(await Bun.file(process.argv[1]).text()); const d = c.d1_databases; process.exit(d?.length === 1 && d[0].binding === "DB" && d[0].database_id === "00000000-0000-0000-0000-000000000000" && d[0].preview_database_id === d[0].database_id ? 0 : 1)' "$ROOT_DIR/pages/wrangler.toml"; then
+  pass "tracked Pages config remains provider-neutral"
+else
+  fail "pages/wrangler.toml must keep placeholder D1 IDs; derive an ignored Pages release directory instead."
+fi
+if git -C "$ROOT_DIR" check-ignore -q target/pages-release-check/wrangler.toml; then
+  pass "Pages release configuration and artifacts remain ignored"
+else
+  fail "target/pages-release-NAME must remain gitignored"
+fi
+
 if [ "$missing" -ne 0 ]; then
   exit 1
 fi

@@ -26,6 +26,9 @@ if [ "$(worker-build --version | awk '{print $1}')" != "$EXPECTED_WORKER_BUILD_V
   exit 1
 fi
 
+# Settle Cargo's lockfile ordering after local name adoption before freezing inputs.
+cargo metadata --format-version 1 > /dev/null
+bun ./scripts/build-provenance.mjs start
 ./scripts/with-wasm-bindgen-cli.sh cargo leptos build --release
 bun ./scripts/hash-assets.mjs
 source "$ROOT_DIR/target/asset-hashes.env"
@@ -33,3 +36,4 @@ source "$ROOT_DIR/target/asset-hashes.env"
 bun ./scripts/write-worker-shim.mjs
 bun ./scripts/verify-hashed-assets.mjs
 bun ./scripts/verify-worker-runtime.mjs
+bun ./scripts/build-provenance.mjs finish

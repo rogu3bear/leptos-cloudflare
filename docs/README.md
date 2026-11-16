@@ -30,3 +30,5 @@ Two paths depending on your needs:
 - [Credential profiles](credentials.md)
 - [Current acceptance criteria](acceptance-criteria.md)
 - [Reference website acceptance](reference-site-acceptance.md)
+
+Pages production source qualification: [configuration, upload compilation, migrations and readback](pages-production.md). This local preparation contract does not establish a deployed site.

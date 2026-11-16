@@ -1,13 +1,22 @@
 #!/usr/bin/env bun
 // Explicit heavy proof; run alone, then rebuild the canonical reference.
 import { strict as assert } from "node:assert";
-import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { adoptProject } from "./init-project.mjs";
+import processes from "./preserve-guard-fds.cjs";
 
 const root = process.cwd();
-const fixture = await mkdtemp(join(tmpdir(), "leptos-cf-adopted-runtime-"));
+let fixture;
+if (process.argv.length > 2) {
+  assert.equal(process.argv[2], "--fixture");
+  assert.equal(process.argv.length, 4);
+  fixture = resolve(process.argv[3]);
+  assert.equal(dirname(fixture), await realpath(tmpdir()), "explicit fixture must be directly under the system temporary directory");
+  assert.match(basename(fixture), /^leptos-cf-adopted-runtime-[A-Za-z0-9-]+$/);
+  await mkdir(fixture, { mode: 0o700 });
+} else fixture = await mkdtemp(join(tmpdir(), "leptos-cf-adopted-runtime-"));
 try {
   for (const file of ["Cargo.toml", "Cargo.lock", "package.json", "bun.lock", ".cargo", ".cfctl", "wrangler.toml", "pages", "runtime", "src", "scripts", "docs", "migrations", "style", "assets"]) {
     await cp(join(root, file), join(fixture, file), { recursive: true });
@@ -37,8 +46,17 @@ pub fn HomePage() -> impl IntoView {
     ["bash", "scripts/build-edge.sh"],
     [process.execPath, "scripts/test-worker-boundaries.mjs"],
   ]) {
-    const process = Bun.spawn(command, { cwd: fixture, env: { ...globalThis.process.env, LEPTOS_BOUNDARY_DOCUMENT_PATH: "/adopted" }, stdout: "inherit", stderr: "inherit" });
-    const exit = await process.exited;
+    const env = { ...process.env, LEPTOS_BOUNDARY_DOCUMENT_PATH: "/adopted" };
+    let launch = command;
+    if (command[0] === "bash" && process.env.DISK_GUARD_RESERVATION) {
+      const budget = process.env.LEPTOS_ACCEPTANCE_BUILD_BUDGET_GB;
+      const request = budget ? ["--budget-gb", budget, "--volume", fixture, "--build-lane", await realpath(join(root, "target"))] : [];
+      const explanation = processes.spawnSync("disk-guard", ["explain", "--format", "text", ...request, "--", ...command], { cwd: fixture, env, encoding: "utf8" });
+      assert.equal(explanation.status, 0, explanation.stdout + explanation.stderr);
+      launch = ["disk-guard", "run", ...request, "--", ...command];
+    }
+    const child = processes.spawn(launch[0], launch.slice(1), { cwd: fixture, env, stdio: ["ignore", "inherit", "inherit"] });
+    const exit = await new Promise((resolve, reject) => { child.once("close", resolve); child.once("error", reject); });
     assert.equal(exit, 0, `${command.join(" ")} failed in the adopted application`);
   }
   console.log("[adopted-runtime] renamed application, replacement page, added route 200, and unknown route 404 passed");

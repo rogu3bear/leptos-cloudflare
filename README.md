@@ -8,7 +8,7 @@ The field guide lives at `/`, `/start`, `/architecture`, `/patterns`, and `/abou
 
 Leptos compiles to WASM on both sides of the wire. The server renders HTML on Cloudflare's edge network, the client hydrates it with the same component code, and server functions give you a typed RPC boundary between the two. No JavaScript framework, no REST boilerplate, no separate API layer.
 
-Cloudflare gives you the deployment surface: Workers for compute, D1 for SQL, Workers Static Assets for exact files, Tunnels for exposing local dev to the internet, and Containers for when you outgrow the Worker sandbox. Workers is the default: it deploys the Worker and `target/site` together. An experimental Pages package aims to use the same SSR handler, server functions, D1 binding and hydration assets through advanced mode; its local runtime has passed qualification. Each choice has its own configuration and deployment proof.
+Cloudflare gives you the deployment surface: Workers for compute, D1 for SQL, Workers Static Assets for exact files, Tunnels for exposing local dev to the internet, and Containers for when you outgrow the Worker sandbox. Workers is the default: it deploys the Worker and `target/site` together. The Pages package uses the same SSR handler, server functions, D1 binding and hydration assets through advanced mode; its runtime and production preparation path are locally qualified. Each choice has its own configuration and deployment proof.
 
 **What you get out of the box:**
 
@@ -38,7 +38,7 @@ This path uses the checked-in placeholder D1 binding only for local development.
 
 ### Choose a deployment target
 
-Workers uses `wrangler.toml` and the Quick Start above. The Pages local runtime passes the full local release gate; its production release path remains experimental. To try it locally:
+Workers uses `wrangler.toml` and the Quick Start above. The Pages runtime and isolated production preparation path pass the local release gate. Live provider execution remains a separate proof stage. To try it locally:
 
 ```bash
 bash ./scripts/build-edge.sh
@@ -48,7 +48,7 @@ CI=1 ../scripts/wrangler.sh d1 migrations apply leptos-cf-db --local
 ../scripts/wrangler.sh pages dev
 ```
 
-`target/pages` must be empty when packaging; use a fresh directory or deliberately remove only your own obsolete output before rebuilding. After `init.sh`, use the adopted database name. Pages receives every request and forwards named assets to `ASSETS`; Workers may serve exact files before invoking the handler. Configure Pages D1 and preview/production identities separately before any deployment. The checked-in placeholders are for local use only; do not deploy them. See [deployment details](docs/edge-deployment.md#pages-option) and [agent playbook](docs/agent-playbook.md).
+`target/pages` must be empty when packaging; use a fresh directory or deliberately remove only your own obsolete output before rebuilding. After `init.sh`, use the adopted database name. Pages receives every request and forwards named assets to `ASSETS`; Workers may serve exact files before invoking the handler. Configure Pages D1 and preview/production identities separately before any deployment. The checked-in placeholders are for local use only; do not deploy them. See [production preparation and readback](docs/pages-production.md), [deployment details](docs/edge-deployment.md#pages-option), and [agent playbook](docs/agent-playbook.md).
 
 ### Start with any coding agent
 

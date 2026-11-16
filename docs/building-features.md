@@ -554,4 +554,4 @@ New tables must exist locally before `wrangler dev` can exercise any queries aga
 Hot-reloads on Worker changes. Does not hot-reload WASM — rebuild with `cargo leptos build` if you change component logic.
 
 
-Both deployment targets share the application and D1 code. For Pages, package the completed edge build and use the separate Pages config; see [the Pages option](edge-deployment.md#pages-option). Test affected behavior on both targets before claiming release readiness.
+Both deployment targets share the application and D1 code. For Pages, package the completed edge build and use the separate Pages config; see [the Pages option](edge-deployment.md#pages-option) and [production preparation](pages-production.md). Test affected behavior on both targets before claiming release readiness.

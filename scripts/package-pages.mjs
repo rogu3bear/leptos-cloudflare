@@ -59,7 +59,7 @@ if (!within(actualDestination, target) && !within(actualDestination, temporaryRo
 }
 validateDestination(actualDestination);
 
-const reserved = new Set(["_worker.js", "_server", "_routes.json"]);
+const reserved = new Set(["_worker.js", "_server", "functions", "_routes.json"]);
 const metadata = new Set(["_headers", "_redirects"]);
 const assets = [];
 async function collectAssets(directory, prefix = "") {
@@ -74,8 +74,8 @@ async function collectAssets(directory, prefix = "") {
 }
 await collectAssets(site);
 const protectedShim = workerEntry({
-  serverModule: "./_server/index.js",
-  runtimeModule: "./_server/dispatch.mjs",
+  serverModule: "./functions/index.js",
+  runtimeModule: "./functions/dispatch.mjs",
   assetPrefix: project.assetPrefix,
   assetPaths: assets.sort(),
   blockServerModules: true,
@@ -85,7 +85,9 @@ await mkdir(destination, { recursive: true });
 if (await realpath(destination) !== actualDestination) throw new Error("Pages output path changed during preparation");
 if ((await readdir(destination)).length) throw new Error("Pages output directory must be empty");
 await cp(site, destination, { recursive: true, errorOnExist: true, force: false });
-const workerDir = join(destination, "_server");
+// Wrangler excludes the root functions directory from the static upload map.
+// Advanced mode still bundles imports from it into the Worker module graph.
+const workerDir = join(destination, "functions");
 await mkdir(workerDir);
 await writeFile(join(destination, "_worker.js"), protectedShim, { flag: "wx" });
 await cp("build/index.js", join(workerDir, "index.js"), { errorOnExist: true, force: false });

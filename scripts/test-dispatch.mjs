@@ -38,4 +38,7 @@ assert.equal(await (await pages.fetch(new Request("https://test/logo.svg"))).tex
 assert.equal(await (await pages.fetch(new Request("https://test/api/save"))).text(), "application");
 assert.equal(await (await pages.fetch(new Request("https://test/missing.svg"))).text(), "application");
 assert.equal((await pages.fetch(new Request("https://test/_server/dispatch.mjs"))).status, 404);
+for (const path of ["/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) {
+  assert.equal((await pages.fetch(new Request(`https://test${path}`))).status, 404, "private modules must never reach ASSETS through encoded traversal");
+}
 console.log("[dispatch] application/asset routing, API stream isolation, spans and socket override passed");

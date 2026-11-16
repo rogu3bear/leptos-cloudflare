@@ -20,7 +20,7 @@ try {
   const output = join(fixture, "target/output");
   let result = run(output);
   assert.equal(result.exitCode, 0, new TextDecoder().decode(result.stderr));
-  assert.equal(await readFile(join(output, "_server/index_bg.wasm"), "utf8"), "wasm fixture");
+  assert.equal(await readFile(join(output, "functions/index_bg.wasm"), "utf8"), "wasm fixture");
   assert.equal(await readFile(join(output, "pkg/app.js"), "utf8"), "asset fixture");
   assert.equal(await readFile(join(output, "logo.svg"), "utf8"), "adopter logo");
   result = run(output);
@@ -31,7 +31,7 @@ try {
   assert.notEqual(result.exitCode, 0, "route exclusions must not bypass the Pages module guard");
   assert.match(new TextDecoder().decode(result.stderr), /reserved _routes\.json/);
   await rm(join(fixture, "target/site/_routes.json"));
-  for (const name of ["_worker.js", "_server"]) {
+  for (const name of ["_worker.js", "_server", "functions"]) {
     await writeFile(join(fixture, "target/site", name), "unowned bytes");
     result = run(join(fixture, `target/reserved-${name}`));
     assert.notEqual(result.exitCode, 0, `reserved ${name} must be rejected`);

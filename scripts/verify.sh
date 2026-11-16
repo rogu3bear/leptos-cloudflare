@@ -19,6 +19,7 @@ bun ./scripts/test-pages-package.mjs
 bun ./scripts/test-dispatch.mjs
 bun ./scripts/test-pattern-links.mjs
 bun ./scripts/test-file-limits.mjs
+bun ./scripts/test-pages-production.mjs
 
 echo "==> 1/11 Dependency and toolchain check"
 ./scripts/check-deps.sh
@@ -48,6 +49,7 @@ bash ./scripts/build-edge.sh
 echo "==> 9/11 Local Worker rendering and network boundaries"
 bun ./scripts/test-worker-boundaries.mjs
 LEPTOS_TEST_PAGES=1 bun ./scripts/test-worker-boundaries.mjs
+bun ./scripts/test-pages-production-runtime.mjs
 
 echo "==> 10/11 Wrangler deployment structure validation"
 ./scripts/wrangler.sh deploy --dry-run

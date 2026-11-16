@@ -88,7 +88,7 @@ pub fn ArchitecturePage() -> impl IntoView {
                             <tr>
                                 <th scope="row">"What deploys?"</th>
                                 <td>"The Worker and `target/site` assets deploy as one unit."</td>
-                                <td>"The experimental Pages package targets the same handler and assets in advanced mode."</td>
+                                <td>"The Pages package targets the same handler and assets in advanced mode."</td>
                                 <td><strong>"Choose one"</strong></td>
                             </tr>
                             <tr>
@@ -101,12 +101,12 @@ pub fn ArchitecturePage() -> impl IntoView {
                                 <th scope="row">"When is it justified?"</th>
                                 <td>"The current SSR, server-function, D1, Assets, and realtime boundaries need one runtime."</td>
                                 <td>"Choose Pages for a Pages project and its deployment workflow."</td>
-                                <td>"Pages experimental"</td>
+                                <td>"Pages source-qualified"</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <p class="decision-note"><strong>"Checked in now:"</strong> "The Pages local runtime is verified; its production release path remains experimental. Workers remains the default. An authorized deployment must earn provider readback and live evidence."</p>
+                <p class="decision-note"><strong>"Checked in now:"</strong> "The Pages runtime and production preparation path are locally qualified; live deployment is a separate proof stage. Workers remains the default. An authorized deployment must earn provider readback and live evidence."</p>
             </section>
 
             <section class="plate" aria-labelledby="asset-router-title">

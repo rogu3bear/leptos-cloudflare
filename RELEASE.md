@@ -166,3 +166,28 @@ No open PR competed with this candidate at inventory time. The existing local
 topic branches have no commits outside `main`; they were retained. Publication
 does not close the historical website's provider-launch obligations or establish
 external adopter acceptance. Required merge approval remains with the operator.
+
+## Pages production preparation follow-up
+
+The earlier source candidate's deferred preparation path is now covered by
+[Pages production qualification](docs/pages-production.md). The gate verifies
+placeholder template boundaries, distinct production/preview identities, a fresh
+private standard-config directory, source/artifact provenance, exact ordered
+migrations, both native multipart upload bundles and config hashes, plus local
+D1/SSR/security/persistence on the derived directory. The build fails on source
+changes during compilation; preparation fails on stale source or artifact drift.
+
+Readback contract fixtures reject mismatched account, project, branch, D1,
+config/date, canonical deployment, stage, commit or URL. They are synthetic tests,
+not provider evidence. A clean committed build is required by the release-file
+CLI and readback validator; dirty builds are qualification-only. No live Pages
+creation, migration, deployment or acceptance is established by this follow-up.
+The source update leaves those effects with their explicitly authorized owner.
+
+Qualification also found and repaired an encoded asset-path traversal that
+returned server WASM. Pages now normalizes decoded private paths before ASSETS
+dispatch and places its server graph in the uploader-excluded `functions/`
+namespace. Native regression checks cover both old and new private paths.
+Both environments must additionally report fail-closed project settings before
+upload and during final readback; source tests do not establish provider quota
+behavior.

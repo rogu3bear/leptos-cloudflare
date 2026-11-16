@@ -91,7 +91,7 @@ async function runAssertions(origin) {
     assert(adopterAsset.status === 200 && await adopterAsset.text() === "adopter asset fixture", "Pages did not serve an adopter asset outside the template whitelist");
     const absentAsset = await fetchBoundary(`${origin}/__adopter_boundary_missing.svg`);
     assert(absentAsset.status === 404, `missing adopter asset returned ${absentAsset.status}`);
-    for (const path of ["/_server/index.js", "/_server/index_bg.wasm"]) {
+    for (const path of ["/_server/index.js", "/_server/index_bg.wasm", "/functions/index.js", "/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) {
       const response = await fetchBoundary(`${origin}${path}`);
       assert(response.status === 404, `Pages server module ${path} returned ${response.status}`);
     }
