@@ -9,8 +9,12 @@ import { verifyReleaseFiles } from "./verify-pages-release.mjs";
 import { withLocalPreview, fetchBoundary } from "./local-preview.mjs";
 import { testResourceExplorer } from "./test-resource-explorer.mjs";
 import { testContactIntake } from "./test-contact-intake.mjs";
+import { projectMetadata } from "./project-metadata.mjs";
 
 const root = process.cwd();
+const { referenceSite } = await projectMetadata(root);
+const documentPath = process.env.LEPTOS_BOUNDARY_DOCUMENT_PATH ?? (referenceSite ? "/architecture" : "/");
+assert.ok(documentPath.startsWith("/") && !documentPath.startsWith("//"));
 const output = join(root, "target", `pages-release-test-${randomUUID()}`);
 let owned = false;
 try {
@@ -29,15 +33,20 @@ try {
     const metadata = await readBundleMetadata(join(output, `${environment}.bundle`));
     assert.equal(metadata.bindings.find((binding) => binding.name === "DB").id, fixtureIdentity[`${environment}Database`].id);
   }
-  await withLocalPreview({ root, pages: true, migrate: true, pagesReleaseDirectory: output }, async (origin, store) => {
-    const response = await fetchBoundary(`${origin}/architecture`);
+  await withLocalPreview({ root, pages: true, migrate: true, readyPath: documentPath, pagesReleaseDirectory: output }, async (origin, store) => {
+    const response = await fetchBoundary(`${origin}${documentPath}`);
     assert.equal(response.status, 200);
-    assert.match(await response.text(), /SSR \+ hydration/);
+    const html = await response.text();
+    assert.match(html, /<main(?:\s[^>]*)?>/);
+    assert.match(html, /<h1(?:\s[^>]*)?>[\s\S]*?[^\s<>][\s\S]*?<\/h1>/);
+    if (referenceSite) assert.match(html, /SSR \+ hydration/);
     assert.match(response.headers.get("content-security-policy"), /nonce-/);
     assert.equal((await fetchBoundary(`${origin}/_server/index_bg.wasm`)).status, 404);
     for (const path of ["/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) assert.equal((await fetchBoundary(`${origin}${path}`)).status, 404);
-    await testResourceExplorer(origin);
-    await testContactIntake(origin, store);
+    if (referenceSite) {
+      await testResourceExplorer(origin);
+      await testContactIntake(origin, store);
+    }
   });
   assert.deepEqual(await verifyReleaseFiles(output), manifest, "local qualification must not change release files");
   console.log("[pages-production] isolated standard config, both native upload bundles, local migrations, SSR/CSP, private modules and persisted workflows passed; no provider operation executed");
