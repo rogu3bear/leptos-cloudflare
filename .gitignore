@@ -13,7 +13,6 @@ wrangler.production.toml
 
 # Local operator/agent strategy files. Keep these useful in private checkouts
 # but out of the public template.
-AGENTS.md
 CLAUDE.md
 NORTH_STAR.md
 ANCHOR.md

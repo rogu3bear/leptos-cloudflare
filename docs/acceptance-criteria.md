@@ -108,7 +108,7 @@ checked against the shared runtime contract.
 ### AC-10: Use a portable, explicit credential context
 
 **Given** a local-only clone, an independently operated standalone deployment,
-or this operator's governed workspace
+or a governed account
 
 **When** the operator follows its documented credential profile
 
@@ -175,44 +175,8 @@ existing production config; successful derivation retains mode 0600.
 - The account, deployed Worker/D1 identity, production runtime, publication, and
   user adoption outcomes are not established by local verification.
 - The minter credential never enters the repository. Current authentication
-  health must be observed; historical Keychain notes have no operational force.
+  health must be observed through the selected control plane.
 - Ordinary write errors are rolled back. Abrupt process or machine termination
   is not an atomic multi-file filesystem transaction; inspect Git and reconcile
   identity before retrying after such an interruption.
 - No external adoption, staffing, timing, or market result is claimed.
-
-## Direct evidence
-
-| Criteria | Verification | Status |
-|---|---|---|
-| AC-1, AC-4, AC-5, AC-6 | `bun scripts/test-acceptance.mjs`: identity, byte preservation, repeated names, invalid/bound input and collision cases | PASS |
-| AC-2, AC-8 | `bun scripts/test-adopted-runtime.mjs`: renamed build, replaced page, added route, missing route and shared runtime assertions | PASS (final 0.1.3 source) |
-| AC-3 | `./scripts/verify.sh` against the canonical candidate | PASS (all 11 stages on final 0.1.3 source) |
-| AC-7 | Direct missing/success/failing tool cases in `scripts/test-acceptance.mjs`, plus full gate missing-tool refusal | PASS |
-| AC-9 | Reference architecture check and deliberately damaged reference fixture | PASS |
-| AC-16 | Production-config exclusive-temp collision and successful mode check | PASS |
-| AC-13 | Fingerprint regression including WASM-only changes and final manifest verification | PASS |
-| AC-14 | Rust generated-suffix and malformed-path regression tests | PASS (15 Rust tests total) |
-| AC-15 | HTTP preload attributes and final browser console | PASS (no unexpected warnings) |
-| AC-11, AC-12 | Real-browser failed mutation and recovery checks | PASS (final 0.1.3 build) |
-| AC-10 | Source review of `docs/credentials.md`, README, local AGENTS; removed rotation wrapper and external scope file | PASS (source/documentation only) |
-
-Local raw logs are written under ignored `var/acceptance/`. The final handoff
-binds the candidate SHA and observed results. Provider and publication receipts
-must be added by their owning release task; they are not inferred here.
-
-Final local proof on 2026-09-04 used `var/acceptance/adopted-runtime-v013.log`
-and `var/acceptance/verify-v013.log`. The independent browser run covered all
-eight checks: hydration/create, reload persistence, session isolation, failed
-toggle with retry, persisted toggle, failed delete retaining detail and concise
-error, successful retry/delete, and mobile overflow. There were no page errors
-or unexpected console warnings; two resource errors were intentionally injected
-503 responses. The verifier completed the mandatory dependency audit with the
-three warnings documented in `RELEASE.md`.
-
-The pre-gate source manifest SHA-256 was
-`1ef44820f1b1ab3c3123b6b4de5feba8a21bcee5c75e2e1b1131596f6ff960f2`;
-the browser-tested asset manifest SHA-256 was
-`43851da171c12816ab4abe778117920978c622b64e1e01e0b2ff33c7415725e3`.
-Only this evidence record changed after those checks. The final candidate
-handoff binds the commit tree and records that documentation-only difference.

@@ -31,6 +31,15 @@ Expected template boundary:
 
 Provider initialization contract:
 
+Select the account owner's [credential profile](docs/credentials.md) before any
+provider operation. Local qualification needs neither credentials nor cfctl.
+The following plan/operation requirements apply to cfctl-governed accounts;
+independent standalone accounts use the target-specific
+[Workers](docs/edge-deployment.md) or [Pages](docs/pages-production.md) procedure.
+Both lanes require owner authorization, verified target identity, recovery before
+schema changes, ordered reviewed migrations, and independent provider readback.
+A governed failure never authorizes switching lanes.
+
 - Use a short-lived, account-scoped child credential; the token-minter credential never enters the repo or deployment profile.
 - Read D1 by exact name before preparing creation. Review, explicitly approve, run, and verify every provider mutation through `cfctl`.
 - Apply remote schema only through the repository-owned operation that binds the clean root/HEAD, pack and ordered migration blobs, derived-config hash/identity, a fresh pre-change recovery bookmark, Wrangler ledger, and closed post-schema proof. Stop if it is blocked.
@@ -128,45 +137,6 @@ Pages is a separate release target. `pages/wrangler.toml` retains placeholder D1
 
 Local tooling uses the exact Wrangler dependency in `package.json` and `bun.lock`; run `bun install --frozen-lockfile` (also done by bootstrap). The verification dry run launches this local CLI with a Node preload that validates and forwards the original Disk Guard descriptors. It still executes the configured build. API requests with bodies use an isolated request clone so cancellation by the Rust body adapter cannot reset the local Workers proxy; the Rust 4 KiB rejection remains authoritative.
 
-## Source publication candidate — 2026-11-15
-
-The publication target is the GitHub starter source, as selected by the operator.
-No live Workers or Pages deployment, provider identity, migration or telemetry
-readback is included. Workers remains the default; Pages production deployment
-remains experimental. The package version remains 0.1.3; the published commit
-identifies this source revision.
-
-The candidate contains shared Workers/Pages dispatch, request-body cancellation
-isolation, original Disk Guard descriptor forwarding, pinned local tooling,
-session-scoped Resource Explorer, and the qualified source/documentation
-refactor. File-size policy retains the operator-approved generated-lock, PNG
-and ignored-boundary exceptions; ignored contents remain unverified.
-
-Cargo regenerated only the Tokio version and checksum, from 1.52.3 to 1.53.3,
-which resolves [RUSTSEC-2026-0386](https://rustsec.org/advisories/RUSTSEC-2026-0386/).
-The generated-lock exception hash was reviewed and refreshed for those bytes.
-
-The local gate now proves contact intake against disposable D1 on both targets:
-migration, normalized persistence, honeypot rejection, separate hourly/daily
-session budgets, and oldest-first global trimming at 2,000 rows. The test seeds
-only its own temporary store; it does not establish production delivery.
-
-Open project obligations were inventoried before publication:
-
-| Issue | Disposition for this candidate |
-| --- | --- |
-| #16 contact D1 proof | Addressed by `scripts/test-contact-intake.mjs`, run through both native boundary suites; close only after integration. |
-| #19 Rust/UI demo | Separate optional component-stack integration; no Rust/UI support is claimed here. Retain open. |
-| #11 Langual rewrite | Separate product and checkout; preserve its owner and local work. This template release does not resolve it. |
-| #7 extension app shell | Separate optional extension contract; retain open. |
-| #8 Rust-domain Worker adapter | Separate extension design contract; retain open. |
-| #9 operator reply identity | Separate authenticated extension UX contract; retain open. |
-
-No open PR competed with this candidate at inventory time. The existing local
-topic branches have no commits outside `main`; they were retained. Publication
-does not close the historical website's provider-launch obligations or establish
-external adopter acceptance. Required merge approval remains with the operator.
-
 ## Pages production preparation follow-up
 
 The earlier source candidate's deferred preparation path is now covered by
@@ -196,3 +166,15 @@ The final source follow-up advances transitive `xxhash-rust` from 0.8.15 to
 patched 0.8.16 for [GHSA-6g2r-675j-hx59](https://github.com/advisories/GHSA-6g2r-675j-hx59).
 Cargo changed only that package version/checksum; the generated-lock exception
 hash was reviewed and refreshed. The three existing audit warnings remain.
+
+## Source release 0.1.4
+
+This release distributes the agent-ready GitHub template source. It includes
+Workers and Pages local qualification, private-module/body-boundary repairs,
+portable onboarding, optional governed cfctl guidance and removal of internal
+planning records from the public tree. See [CHANGELOG.md](CHANGELOG.md).
+
+The source archive must match the independently reviewed integrated commit.
+Publish no credentials, generated runtime output, private qualification packets
+or provider identities. Local Workers/Pages proof is not deployment or live
+acceptance; no Cloudflare deployment is included in this source release.

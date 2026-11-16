@@ -8,16 +8,16 @@ const root = await mkdtemp(join(tmpdir(), "pattern-links-"));
 const verifier = resolve("scripts/verify-patterns.mjs");
 const run = () => Bun.spawnSync([process.execPath, verifier], { cwd: root, stdout: "pipe", stderr: "pipe" });
 try {
-  for (const directory of ["patterns/sample", "scripts", "src"]) await mkdir(join(root, directory), { recursive: true });
-  for (const file of ["STRATEGY.md", "Cargo.toml", "wrangler.toml", "scripts/verify-patterns.mjs", "scripts/verify.sh", "src/owned.rs"]) await writeFile(join(root, file), "fixture");
-  await writeFile(join(root, "patterns/README.md"), "second layer core template\n## Verification Contract\n`scripts/verify-patterns.mjs` `./scripts/verify.sh`\n[Sample](./sample/) `STRATEGY.md` `Cargo.toml` `wrangler.toml`\n");
+  for (const directory of ["patterns/sample", "scripts", "src", "docs"]) await mkdir(join(root, directory), { recursive: true });
+  for (const file of ["docs/strategy.md", "Cargo.toml", "wrangler.toml", "scripts/verify-patterns.mjs", "scripts/verify.sh", "src/owned.rs"]) await writeFile(join(root, file), "fixture");
+  await writeFile(join(root, "patterns/README.md"), "second layer core template\n## Verification Contract\n`scripts/verify-patterns.mjs` `./scripts/verify.sh`\n[Sample](./sample/) `docs/strategy.md` `Cargo.toml` `wrangler.toml`\n");
   await writeFile(join(root, "patterns/sample/README.md"), "Problem\n`src/owned.rs`\n");
   assert.equal(run().exitCode, 0);
-  await rename(join(root, "STRATEGY.md"), join(root, "STRATEGY-renamed.md"));
+  await rename(join(root, "docs/strategy.md"), join(root, "docs/strategy-renamed.md"));
   let result = run();
   assert.notEqual(result.exitCode, 0);
-  assert.match(new TextDecoder().decode(result.stderr), /stale inline path: STRATEGY.md/);
-  await rename(join(root, "STRATEGY-renamed.md"), join(root, "STRATEGY.md"));
+  assert.ok(new TextDecoder().decode(result.stderr).includes("stale inline path: docs/strategy.md"));
+  await rename(join(root, "docs/strategy-renamed.md"), join(root, "docs/strategy.md"));
   for (const name of ["Cargo.toml", "wrangler.toml"]) {
     await rename(join(root, name), join(root, `${name}.renamed`));
     const missingConfig = run();

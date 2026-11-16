@@ -27,7 +27,7 @@ New applications built from the template should add their own authentication, au
 
 Use `.dev.vars` for local development secrets. Production credential and
 secret handling follows the selected [credential profile](docs/credentials.md):
-this operator workspace uses governed cfctl; an independent public adopter may
+a governed account uses cfctl; an independent public adopter may
 use its standalone Wrangler procedure. Standalone commands are not a fallback
 for a blocked capability in the governed account. Both `.env` and `.dev.vars*`
 are ignored. `.env.example` must remain placeholder-only.

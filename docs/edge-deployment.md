@@ -95,7 +95,7 @@ SITE_URL = "https://example.com"
 Secrets (API keys, tokens, passwords) are stored in Cloudflare's secret store and never appear in your code or config:
 
 ```sh
-wrangler secret put STRIPE_SECRET_KEY
+./scripts/wrangler.sh secret put STRIPE_SECRET_KEY
 # prompts for the value; stores it encrypted
 ```
 
@@ -134,17 +134,17 @@ D1 has a single primary instance where all writes land. If you enable D1 read re
 
 ```sh
 # Portable, non-governed Wrangler path
-wrangler d1 create leptos-cf-db
+./scripts/wrangler.sh d1 create leptos-cf-db
 
 # Derive ignored wrangler.production.toml with the returned database_id, then apply
 bun scripts/write-production-config.mjs --worker <worker> --database leptos-cf-db --database-id <uuid>
-wrangler d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
+./scripts/wrangler.sh d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
 
 # For local development
-wrangler d1 migrations apply leptos-cf-db --local
+./scripts/wrangler.sh d1 migrations apply leptos-cf-db --local
 ```
 
-In this operator workspace, production D1 reads and writes use `cfctl`. Read by exact name first and prepare/approve `d1-create-database` only when absent. Keep tracked `wrangler.toml` portable; derive the ignored production config from the verified identity. Apply migrations only through the repository-owned operation that binds source blobs, target identity, a fresh recovery bookmark, Wrangler's ledger, and closed post-schema proof. A blocked capability is a stop condition, not a reason to fall back to direct Wrangler.
+In a cfctl-governed account, production D1 reads and writes use `cfctl`. Read by exact name first and prepare/approve `d1-create-database` only when absent. Keep tracked `wrangler.toml` portable; derive the ignored production config from the verified identity. Apply migrations only through the repository-owned operation that binds source blobs, target identity, a fresh recovery bookmark, Wrangler's ledger, and closed post-schema proof. A blocked capability is a stop condition, not a reason to fall back to direct Wrangler.
 
 The `migrations_dir` in `wrangler.toml` points to the `migrations/` directory. Wrangler tracks which migrations have been applied and runs only new ones.
 
@@ -269,7 +269,7 @@ bucket_name = "my-app-uploads"
 Create the bucket first:
 
 ```sh
-wrangler r2 bucket create my-app-uploads
+./scripts/wrangler.sh r2 bucket create my-app-uploads
 ```
 
 ### Accessing R2 from a Server Function
@@ -349,7 +349,7 @@ KV is not suited for:
 ### Adding KV to wrangler.toml
 
 ```sh
-wrangler kv namespace create CACHE
+./scripts/wrangler.sh kv namespace create CACHE
 # outputs the namespace ID — paste it into wrangler.toml
 ```
 
@@ -416,7 +416,7 @@ A Queue has producers (Workers that send messages) and consumers (Workers that p
 #### Adding queue bindings
 
 ```sh
-wrangler queues create background-jobs
+./scripts/wrangler.sh queues create background-jobs
 ```
 
 ```toml
@@ -661,21 +661,21 @@ The production configuration samples 10% of invocation logs and 1% of traces. Th
 
 ```sh
 # Deploy to production
-wrangler deploy --config wrangler.production.toml
+./scripts/wrangler.sh deploy --config wrangler.production.toml
 
 # Dry run (validate config, don't deploy)
-wrangler deploy --dry-run --config wrangler.production.toml
+./scripts/wrangler.sh deploy --dry-run --config wrangler.production.toml
 
 # Apply database migrations in production
-wrangler d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
+./scripts/wrangler.sh d1 migrations apply leptos-cf-db --remote --config wrangler.production.toml
 
 # Tail live logs
-wrangler tail
+./scripts/wrangler.sh tail
 ```
 
 Apply migrations before or immediately after deploying code that depends on new schema. The migration system is append-only — never modify an existing migration file.
 
-For this operator's Cloudflare account, the commands above are explanatory only. Production mutation follows the governed `cfctl` plan/approval/run/status/readback workflow named in the repository doctrine. `wrangler.production.toml` is an input bound into those plans, never tracked source authority. Keep D1 creation, remote schema application, Worker deployment, provider readback, and live route/telemetry proof as distinct receipts.
+For a cfctl-governed account, the commands above are explanatory only. Production mutation follows the governed `cfctl` plan/approval/run/status/readback workflow named in the repository doctrine. `wrangler.production.toml` is an input bound into those plans, never tracked source authority. Keep D1 creation, remote schema application, Worker deployment, provider readback, and live route/telemetry proof as distinct receipts.
 
 
 ## Pages option

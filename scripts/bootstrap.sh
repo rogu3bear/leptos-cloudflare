@@ -95,14 +95,11 @@ Local next steps:
 2. bash ./scripts/build-edge.sh
 3. ./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
 
-Production initialization is a separate provider transaction:
-Choose the governed or independent standalone profile in docs/credentials.md.
-In this operator workspace:
-1. Acquire a short-lived, account-scoped child token through the governed credential flow.
-2. Use cfctl to read D1 by name; if absent, prepare, approve, run, and verify d1-create-database.
-3. Derive ignored wrangler.production.toml with scripts/write-production-config.mjs using only verified Worker/D1 names and the read-back D1 UUID. Never edit the tracked template identity.
-4. Apply the exact committed migration set through the repository-bound governed D1 migration operation.
-5. Prepare, approve, run, and read back the Workers deployment through cfctl.
-
-If cfctl reports that a provider mutation is blocked, stop at that boundary. Do not bypass it with a direct Wrangler or raw API write.
+Provider operations are separate from local setup:
+- Choose standalone Wrangler or an owner-selected cfctl lane: docs/credentials.md.
+- Workers deployment: docs/edge-deployment.md.
+- Pages preparation and readback: docs/pages-production.md.
+- Optional governed capability discovery: docs/cfctl.md.
+Keep tracked IDs as placeholders; use verified identity for ignored production config.
+A blocked governed capability is a hold, not permission to bypass it.
 EOF

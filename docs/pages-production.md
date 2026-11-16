@@ -64,7 +64,7 @@ the release gate. No real IDs, tokens or release artifacts belong in Git.
 
 ## Future authorized provider procedure
 
-In this operator workspace, route through the Cloudflare Authority and governed
+In a cfctl-governed account, follow the account owner’s governed
 cfctl contract in [credentials](credentials.md). The local manifest is input to
 that owner's exact plan, not permission to run Wrangler. If an owning capability
 cannot bind the Pages config, migrations or upload, stop at that capability;

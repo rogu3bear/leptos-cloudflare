@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.4
+
+- Ship public agent instructions, concise onboarding and distinct credential-free,
+  standalone Wrangler and optional governed cfctl paths.
+- Exclude internal planning records and personal machine references from the
+  current source; preserve license attribution and canonical repository links.
+- Qualify Pages production preparation with isolated configuration, separate
+  production/preview D1 identities, exact build provenance and readback contracts.
+- Normalize private paths and keep server modules out of Pages static uploads.
+- Preserve Workers oversized-body rejection and genuine resource descriptors
+  through nested builds and adopter qualification.
+- Update Tokio and xxhash-rust to patched versions selected in Cargo.lock.
+- Distribute GitHub template source only; provider deployment and live acceptance
+  remain separate authorized operations.
+
 ## 0.1.3
 
 - Present the public reference as an SSR-first field guide with Start,

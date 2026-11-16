@@ -1,398 +1,102 @@
-# Agent Playbook: leptos-cf
+# Agent playbook
 
-Portable instruction set for any coding agent working on this Leptos + Cloudflare Workers or Pages + D1 starter. Follows the repository conventions established in the codebase. Read this before making any changes.
+Start with [AGENTS.md](../AGENTS.md) and the [README](../README.md). Inspect Git
+status and preserve existing work. Workers is the default unless the owner chose
+Pages. Local work needs no Cloudflare credentials, cfctl or private instructions.
 
----
-
-## Start here
-
-Read the README Quick Start, inspect the checkout and preserve existing changes. Ask the project owner which target they intend to use; Workers is the default. The Pages package shares SSR, hydration, server functions and D1; its local runtime and production preparation path pass qualification. See [Pages production](pages-production.md) for isolated configuration and readback. Workers uses `wrangler.toml` and `build/_worker.js`; Pages uses `pages/wrangler.toml` and a separately packaged advanced-mode output. Follow the Pages option in [edge deployment](edge-deployment.md#pages-option). Local development does not need a provider credential. Make the requested change, run the relevant checks, and run `./scripts/verify.sh` before claiming release readiness. Provider changes need the applicable owner's authority.
-
-## 1. Prerequisites Check
-
-Run the dependency checker first:
+## Set up and run
 
 ```bash
 ./scripts/check-deps.sh
-```
-
-Expected output: every line starts with `[ok]`. Any `[missing]` line is a hard blocker.
-
-If it fails, run the bootstrap script:
-
-```bash
+# If build tools are missing, after installing Rust/rustup, Bun and Node.js 22+:
+cargo install cargo-audit --locked
 ./scripts/bootstrap.sh
 ```
 
-Bootstrap installs: stable Rust toolchain, `wasm32-unknown-unknown` target, `cargo-leptos`, `worker-build`, and the repo-local `wasm-bindgen-cli` resolved from `Cargo.lock`. It requires `rustup`, `cargo`, and `bun` to already be present. If those are missing, the script exits with an error message that names the missing tool.
-
-After bootstrap, re-run `check-deps.sh` and confirm all checks pass.
-
-Local development needs no provider credential. For this operator workspace's production lane only, verify the Cloudflare account identity and the dedicated short-lived profile:
-
-```bash
-test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
-export LEPTOS_CF_PROFILE="your-short-lived-profile"
-cfctl auth import-api-token \
-  --profile "$LEPTOS_CF_PROFILE" \
-  --account "$CLOUDFLARE_ACCOUNT_ID" \
-  --value-in "<mode-0600-token-file>" --json
-cfctl auth status "$LEPTOS_CF_PROFILE" --json
-```
-
-If the short-lived child is already installed, omit import and check its status.
-Require `ok: true`, `result.credential_available: true`, `result.profile.id`
-equal to `$LEPTOS_CF_PROFILE`, and `result.profile.account_id` equal to
-`$CLOUDFLARE_ACCOUNT_ID`. Exit 0 alone does not establish credential availability;
-this local check does not establish provider permissions. Governed calls use
-cfctl's selected secret store. Repo-local `.env` credentials belong only to the
-separate standalone Wrangler lane. Never hardcode or print the token. The account
-token-minter credential does not enter this repository or deployment profile.
-
----
-
-## 2. Governed Production Bootstrap
-
-For credential-free local startup, use README Quick Start. For independent
-standalone production operation, use `docs/credentials.md` and the portable
-Wrangler lane. The sequence below is for this operator workspace only.
-After `scripts/init.sh`, substitute the adopted names from Cargo/Wrangler and
-the operation ID in `.cfctl/operations/d1-migrations.toml`. Read them before the
-commands below:
+A zero exit passes. `[warn]` lines about placeholder IDs are expected;
+`[missing]` or a nonzero exit means a prerequisite is unresolved.
+Use the README's local D1/build/preview commands. After adopting a name, derive
+the database name from config rather than keeping a template constant:
 
 ```bash
 LEPTOS_D1_NAME=$(bun -e 'console.log(Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name)')
-LEPTOS_MIGRATION_ID=$(bun -e 'console.log(Bun.TOML.parse(await Bun.file(".cfctl/operations/d1-migrations.toml").text()).operation[0].id)')
-```
-
-### 2.1 Read or create the D1 database through cfctl
-
-First bind and audit the checkout/account, then query by the exact database name:
-
-```bash
-cfctl workspace add "$PWD" --account "$CLOUDFLARE_ACCOUNT_ID" --json
-cfctl workspace audit --json
-cfctl call d1-list-databases \
-  --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-  --query "name=$LEPTOS_D1_NAME" \
-  --profile "$LEPTOS_CF_PROFILE" \
-  --json
-```
-
-If no exact-name database exists, prepare a create plan:
-
-```bash
-bun -e 'const name = Bun.TOML.parse(await Bun.file("wrangler.toml").text()).d1_databases[0].database_name; console.log(JSON.stringify({name, read_replication: {mode: "disabled"}}))' | \
-  cfctl call d1-create-database \
-    --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-    --profile "$LEPTOS_CF_PROFILE" \
-    --body-stdin \
-    --json
-```
-
-This returns a preview operation. Inspect its selectors, body, cost, rollback, workspace impact, and content hash; obtain explicit approval; then run `cfctl plans approve`, `cfctl plans run`, and `cfctl plans status` for that exact operation. Extract the UUID only from successful provider verification:
-
-```
-[[d1_databases]]
-binding = "DB"
-database_name = "leptos-cf-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-```
-
-Do not create a duplicate after a name lookup, and do not install an ID from plan intent alone.
-
-### 2.2 Derive the ignored production config
-
-Keep tracked `wrangler.toml` provider-neutral. Derive `wrangler.production.toml` only after Worker/D1 names and the D1 UUID have been read back from the provider:
-
-```bash
-bun ./scripts/write-production-config.mjs \
-  --worker <verified-worker-name> \
-  --database <verified-d1-name> \
-  --database-id <verified-d1-uuid>
-```
-
-The generator rejects partial or invalid identity, an already-bound source template, Pages/`env.production` drift, and missing runtime invariants. It changes only the Worker name, D1 name, and both D1 UUID fields. The output is gitignored and must never become a second tracked source of truth.
-
-### 2.3 Apply migrations
-
-Apply to the local SQLite replica first:
-
-```bash
 CI=1 ./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local
-```
-
-Remote schema application is a production data write. Use the ID in `$LEPTOS_MIGRATION_ID`, the repository-owned operation that binds the clean canonical root and HEAD, every ordered migration blob, operation-pack blob, production-config hash and database identity, a fresh pre-change recovery bookmark, the Wrangler migration ledger, and closed schema readback. Generic D1 import/query paths are not substitutes. If the operation fails closed, stop and resolve its contract; do not bypass it with direct Wrangler or raw SQL.
-
-Prepare its exact plan with the same account and profile:
-
-```bash
-cfctl call "$LEPTOS_MIGRATION_ID" \
-  --selector "account_id=$CLOUDFLARE_ACCOUNT_ID" \
-  --selector "database_id=<verified-d1-uuid>" \
-  --query config=wrangler.production.toml \
-  --profile "$LEPTOS_CF_PROFILE" \
-  --json
-```
-
-The migrations create the `todos` and `contact_submissions` tables plus their indexes. Verify with:
-
-```bash
-./scripts/wrangler.sh d1 execute "$LEPTOS_D1_NAME" --local --command "SELECT name FROM sqlite_master WHERE type='table'"
-```
-
-Expected: `todos` and `contact_submissions` appear in the result.
-
-### 2.4 Build
-
-```bash
 bash ./scripts/build-edge.sh
+./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581
 ```
 
-This runs the full edge build pipeline: `cargo-leptos` compiles the hydration bundle, `scripts/hash-assets.mjs` fingerprints the client JS/CSS/WASM and updates the SSR asset constants, `worker-build` compiles the Worker bundle, and `scripts/write-worker-shim.mjs` generates the configured Workers entrypoint. Output lands in `target/site/` and `build/`. Expect several minutes on first run due to dependency compilation.
+For Pages, use the separate README example from `pages/`. Keep `pages/package.json`:
+it prevents discovery of the parent Workers project. Package into a fresh output
+directory and keep server modules private.
 
-Decision point: if the build fails with a `wasm-bindgen` version mismatch error, see section 7 (Troubleshooting).
+## Make a change at its owner
 
-### 2.5 Verify the build artifact
+| Change | Source |
+|---|---|
+| Page or route | `src/components/`, exports in `src/components/mod.rs`, route in `src/app.rs` |
+| Domain types and validation | `src/todos.rs`, `src/contact_fields.rs` |
+| Typed server function | `src/api.rs`, delegating through `crate::server::run(...)` |
+| D1 operation | `src/server/todos.rs`, `src/server/contact.rs`; register new modules in `src/server/mod.rs` |
+| Request-scoped database and session | `src/server/state.rs`, `src/server/d1.rs` |
+| Worker/SSR security boundary | `src/lib.rs`, `src/edge/`, `runtime/dispatch.mjs` |
+| Styles | `style/main.css` |
+| Schema | A new append-only `migrations/NNNN_name.sql` |
+| Workers / Pages bindings | `wrangler.toml` / `pages/wrangler.toml`; keep tracked identities placeholders |
+| Generated runtime and assets | Build/package scripts; do not edit generated `build/` or `target/` |
+
+Keep one Router-owned layout and one main landmark. Adding a route does not
+require a second Worker allowlist; preserve the SSR not-found response.
+Server operations use `request_database()` for database and session together.
+Reuse the shared Send bridge rather than wrapping each caller independently.
+See [building features](building-features.md) for worked examples and
+[Resource Explorer](../patterns/resource-explorer/README.md) for reviewed edits,
+conflict handling, retry and persisted readback.
+
+`/contact` stores validated D1 intake; it sends no email or webhook.
+`/realtime/socket` is a request-scoped capability route above Leptos. Rooms,
+presence, collaboration and other shared state require Durable Objects; follow
+[realtime](realtime.md). Do not remove sample consumers or schema until the
+application cutover replaces them. Follow [adoption](adopting.md).
+
+## Verify at the required depth
 
 ```bash
-./scripts/wrangler.sh deploy --dry-run
+cargo check --features ssr       # focused server iteration
+cargo fmt --check
+./scripts/verify.sh              # required before release-readiness claims
 ```
 
-This validates the `wrangler.toml` config and the build output without uploading anything. Expected output ends with `Total Upload:` and does not contain `error`.
-
-### 2.6 Deploy through a reviewed plan
-
-```bash
-cfctl call wrangler.deploy \
-  --account "$CLOUDFLARE_ACCOUNT_ID" \
-  --profile "$LEPTOS_CF_PROFILE" \
-  --query "config=$PWD/wrangler.production.toml" \
-  --query "name=<verified-worker-name>" \
-  --query "message=<exact-source-and-artifact-identity-from-cfctl>" \
-  --json
-```
-
-Use the exact Worker name from provider readback and the exact source/artifact
-identity cfctl requires for this clean source and build. A mismatched message
-fails plan preparation and reports the required value; review that value and
-repeat preparation with it. Do not reuse the
-identity after either changes. The returned plan keeps its selected profile and
-account through approval, execution, and status. That command prepares a
-hash-bound deployment plan. After reviewing and explicitly approving the exact operation, use `cfctl plans run` and `cfctl plans status`. Then independently read back the Worker version, compatibility date, bindings, assets, routes, and observability settings and test the field-guide routes plus the `/lab` D1 write path. Plan completion is not live behavior proof.
-
----
-
-## 3. Adding a Feature
-
-Use this checklist. Work through it top to bottom; each item that applies requires changes before the next item.
-
-**Do you need a new database table?**
-- Create `migrations/NNNN_<name>.sql` (increment N from the last migration file).
-- Apply local: `./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local`
-- Apply remote after the feature is complete and tested locally.
-
-**Do you need a new server function?**
-- Declare shared types and validation in the domain owner (`src/todos.rs` or `src/contact_fields.rs`), with API reexports when needed. Both must derive `Serialize`, `Deserialize`, `Clone`.
-- Add the `#[server(...)]` function in `src/api.rs`. Delegate through `crate::server::run(...)`, which owns the Worker-to-Leptos Send bridge.
-- Add the database implementation function in `src/server/todos.rs` (or a new file under `src/server/`). Register any new module in `src/server/mod.rs`.
-- Domain server operations obtain request-scoped database and session identity together through `request_database()` in `src/server/d1.rs`. Do not use global state.
-
-**Do you need a new page or route?**
-- Create the component file in `src/components/<name>.rs`.
-- Export it from `src/components/mod.rs`.
-- Add a `<Route path=... view=YourComponent/>` in `src/app.rs` inside the existing `<Routes>` block.
-
-**Do you need new styles?**
-- Add CSS to `style/main.css`. There is no Tailwind; write plain CSS. Match the existing naming conventions (BEM-adjacent, lowercase kebab).
-
-**After every change:**
-- Run the verification protocol in section 6 before considering the feature done.
-
----
-
-## 4. Common Operations Reference
-
-| Operation | Command |
-|-----------|---------|
-| Check all deps | `./scripts/check-deps.sh` |
-| Full bootstrap | `./scripts/bootstrap.sh` |
-| Read D1 database inventory | `cfctl call d1-list-databases ... --json` |
-| Prepare D1 creation plan | `cfctl call d1-create-database ... --body-stdin --json` |
-| Apply migrations (local) | `./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local` |
-| Derive production config | `bun scripts/write-production-config.mjs --worker ... --database ... --database-id ...` |
-| Apply reviewed migrations (remote) | Complete pinned example in §2.3; operation ID comes from the adopted pack |
-| Execute SQL (local) | `./scripts/wrangler.sh d1 execute "$LEPTOS_D1_NAME" --local --command "..."` |
-| Verify remote schema | Governed bounded schema-introspection/read capability |
-| Build (release) | `bash ./scripts/build-edge.sh` |
-| Type-check SSR only | `cargo check --features ssr` |
-| Local dev server | `./scripts/wrangler.sh dev --local --ip 127.0.0.1 --port 57581` |
-| Validate before deploy | `./scripts/wrangler.sh deploy --dry-run` |
-| Prepare production deploy | Complete account/profile/config/name/message-pinned example in §2.6 |
-| Production secrets | Governed secret capability with secret input/output sinks |
-
----
-
-## 5. File Ownership Map
-
-Before editing any file, confirm it matches the kind of change you are making.
-
-| What you are changing | File(s) to edit |
-|-----------------------|-----------------|
-| Shared types, server function signatures | `src/api.rs` |
-| D1 query logic | `src/server/todos.rs`, `src/server/contact.rs` (or new file in `src/server/`) |
-| New server submodule | `src/server/mod.rs` — add `pub mod <name>` |
-| UI components | `src/components/<name>.rs` |
-| New component exports | `src/components/mod.rs` |
-| Route definitions | `src/app.rs` |
-| CSS styles | `style/main.css` |
-| Database schema | `migrations/NNNN_<name>.sql` (new file, never edit applied migrations) |
-| Portable Cloudflare bindings (D1, KV, R2, etc.) | tracked `wrangler.toml` |
-| Provider identity | derived, gitignored `wrangler.production.toml`; never hand-edit tracked identity |
-| Governed remote migration contract | `.cfctl/operations/d1-migrations.toml` plus append-only `migrations/*.sql` |
-| WebSocket ingress contract | `scripts/write-worker-shim.mjs`, `docs/realtime.md` |
-| Shared realtime state | `patterns/realtime-durable-object/` first, then `wrangler.toml` and `scripts/write-worker-shim.mjs` when adopting |
-| Local dev secrets | `.dev.vars` (create if absent; never commit this file) |
-| Production secrets | `./scripts/wrangler.sh secret put ...` (stored in CF, not in files) |
-| Worker event and HTTP boundary | `src/lib.rs`, `src/edge/` |
-| Request-scoped database/session | `src/server/state.rs`, `src/server/d1.rs` |
-| Rust dependencies | `Cargo.toml` |
-
-Do not edit `src/lib.rs` for feature work. It contains only the Worker `fetch` entry point and the WASM `hydrate` export. Change it only if the routing or app state wiring needs to change.
-
-The public `/contact` route is intentionally local to the template: it validates and persists submissions to D1, applies session-scoped submission caps, and relies on the Worker `/api/*` origin guard before Leptos server functions dispatch. It does not send email, webhooks, or third-party API calls without an explicit integration.
-
-The public `/realtime/socket` route is intentionally a Worker-level capability lane. Keep request-scoped demos in the generated shim; move rooms, presence, collaboration, fanout, reconnect state, or other shared state to `patterns/realtime-durable-object/` before adding Durable Object bindings.
-
----
-
-## 6. Verification Protocol
-
-For day-to-day iteration, use this lighter sequence:
-
-```bash
-# Step 1: Fast type-check for SSR
-cargo check --features ssr
-
-# Step 2: Full edge build + verifiers
-bash ./scripts/build-edge.sh
-
-# Step 3: Deployment structure validation
-./scripts/wrangler.sh deploy --dry-run
-```
-
-Before pushing or declaring a change complete, run the full release readiness verification instead:
-
-```bash
-./scripts/verify.sh
-```
-
-This is the authoritative local sequence documented in `RELEASE.md`.
-
----
-
-## 7. Troubleshooting
-
-## Realtime/WebSocket Rule
-
-WebSocket traffic enters above Leptos. Do not add realtime features by relying on client-side navigation, browser history behavior, or a Leptos component mounting at the right time.
-
-Use the explicit `/realtime/socket` lane from the generated `_worker.js` for request-scoped capability checks. If the feature has rooms, presence, collaboration, fanout, reconnect state, or any shared state across clients, introduce a Durable Object and document the object key.
-
-Required proof after touching realtime routing:
-
-```bash
-bash ./scripts/build-edge.sh
-bun ./scripts/verify-worker-runtime.mjs
-./scripts/wrangler.sh deploy --dry-run
-```
-
-**`error: wasm-bindgen version mismatch`**
-
-The `wasm-bindgen-cli` version must match what `Cargo.lock` resolves. The production build wraps both `cargo leptos` and `worker-build` with `scripts/with-wasm-bindgen-cli.sh`, which installs the lockfile-matched CLI under `var/cargo-tools/` and puts it first on `PATH` for every WASM-producing phase.
-
-Check the repo-local version:
-```bash
-./scripts/with-wasm-bindgen-cli.sh --version
-```
-
-Fix — refresh the repo-local tool and rerun the build:
-```bash
-rm -rf var/cargo-tools/wasm-bindgen-*
-bash ./scripts/build-edge.sh
-```
-
----
-
-**`the trait Send is not implemented for ...` / `not Send` errors in server functions**
-
-Cloudflare Workers use a single-threaded runtime. The `worker` crate types (`D1Database`, `Env`, etc.) are not `Send`. Leptos server functions require `Send` futures by default.
-
-The bridge is owned by `src/server/mod.rs`: `run` uses `SendWrapper` for the non-Send Worker future. Server declarations in `src/api.rs` delegate to it; new commands should reuse that bridge.
-
-```rust
-#[server(MyFn)]
-pub async fn my_fn() -> Result<MyType, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        crate::server::run(crate::server::my_module::my_impl()).await
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("server functions only execute on the server")
-    }
-}
-```
-
----
-
-**`no such table: todos` at runtime**
-
-For local development, apply the local migration:
-
-```bash
-./scripts/wrangler.sh d1 migrations apply "$LEPTOS_D1_NAME" --local
-```
-
-For production, inspect the provider schema and prepare the repository-owned operation read from `.cfctl/operations/d1-migrations.toml`. If it is blocked, stop and resolve that contract rather than running a direct remote command.
-
----
-
-**`wrangler.toml contains placeholder D1 IDs`**
-
-This is the required tracked-template state, not a warning. If a production command fails because it used the template, you skipped step 2.2 or omitted `--config wrangler.production.toml`. Re-derive the ignored file only from a live `d1-list-databases` receipt or verified `d1-create-database` readback.
-
----
-
-**`module not found` after adding a new source file**
-
-Rust requires explicit module registration. If you created `src/server/my_module.rs`, add `pub mod my_module;` to `src/server/mod.rs`. If you created `src/components/my_page.rs`, add `pub mod my_page;` to `src/components/mod.rs`. The compiler error will name the missing declaration.
-
----
-
-**`Missing app state in Leptos server function context`**
-
-`AppState` is injected into the Leptos context in `src/edge/mod.rs` via `.leptos_routes_with_context`. If you see this error, the server function ran outside the context scope — this should not happen unless you modified the edge context wiring. Do not call server implementation functions from outside a server function.
-
----
-
-**`D1 reported no rows changed during toggle/delete`**
-
-The requested todo ID does not exist. This is a logic error in the caller, not an infrastructure issue. Verify the ID being passed to `toggle_todo` or `delete_todo` exists in the database.
-
-## Executable resource workflow
-
-Use [Resource Explorer](../patterns/resource-explorer/README.md) for a collection, related records, and draft/review/save flow. The gallery and recipe use the same components. `SearchTodos` filters before the result limit; `UpdateTodo` validates and compares saved fields in session-scoped D1. No new binding or migration is required.
-
-## Application adoption
-
-Use `docs/adopting.md` for the supported name and page cutover. The initializer
-preserves application code and schema. `Cargo.toml` selects reference-site
-checks explicitly; shared runtime/security checks remain required for every
-adopter. The complete gate now requires cargo-audit; absence fails before build.
-
-
-Local tooling uses the exact Wrangler dependency in `package.json` and `bun.lock`; run `bun install --frozen-lockfile` (also done by bootstrap). The verification dry run launches this local CLI with a Node preload that validates and forwards the original Disk Guard descriptors. It still executes the configured build. API requests with bodies use an isolated request clone so cancellation by the Rust body adapter cannot reset the local Workers proxy; the Rust 4 KiB rejection remains authoritative.
-
-
-For the standalone source-size inventory, run `bun scripts/check-file-limits.mjs`; see [repository cleanup and exception rules](repository-cleanup.md). Its regression fixtures run in the existing gate, while unresolved size exceptions remain a separate reported condition.
+The full local gate is authoritative; hosted CI is intentionally absent.
+Use `bash scripts/build-edge.sh` for both WASM builds and asset/runtime verifiers,
+then `./scripts/wrangler.sh deploy --dry-run` for the configured build and deployment
+shape. A dry run uploads nothing and proves no live behavior.
+Run `bun scripts/check-file-limits.mjs` for the separate source-size inventory;
+its exception rules are in [repository cleanup](repository-cleanup.md).
+
+## Diagnose without bypassing
+
+| Failure | Next step |
+|---|---|
+| Missing tool or dependency audit | Read the named prerequisite, install through its supported owner, then rerun; do not skip checks |
+| wasm-bindgen mismatch | Check `./scripts/with-wasm-bindgen-cli.sh --version` against Cargo.lock; rebuild through the wrapper, not an ambient global binary |
+| Non-Send Worker future | Delegate through `crate::server::run(...)` in `src/server/mod.rs` |
+| Missing D1 table locally | Apply migrations with the configured database name and `--local` |
+| Production placeholder ID | Derive ignored production configuration from verified identity; never patch tracked IDs |
+| New module not found | Register its `pub mod` in the corresponding module owner |
+| Missing app state | Inspect the context wiring in `src/edge/mod.rs`; don't call server implementations outside the server-function context |
+| Mutation failed or conflicted | Preserve the record, show the error and allow retry; inspect session ownership and canonical data |
+| Host resource admission hold | Follow the host's admission explanation; preserve inherited descriptors and reservations, never delete caches or bypass the hold |
+
+## Provider operations are separate
+
+Select [credential profiles](credentials.md) explicitly. Independent accounts use
+the standalone target-specific procedure. An owner-selected cfctl account uses
+[installed capability discovery](cfctl.md), account/profile/target binding, exact
+plan approval, execution and independent readback. Installation alone grants no
+access or authority. A blocked governed capability does not select another lane.
+
+Workers production uses ignored `wrangler.production.toml`. Pages has distinct
+production/preview identities and the [production preparation/readback contract](pages-production.md).
+Keep migration hashes, assertions, recovery and deployed schema proof intact.
+Follow [RELEASE.md](../RELEASE.md) for the full release procedure. Source, local
+runtime, publication, provider deployment and live acceptance remain distinct.

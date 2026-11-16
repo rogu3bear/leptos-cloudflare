@@ -20,7 +20,7 @@ the diagnosis using their observed failure point.
 Keep one inspectable Leptos/Workers reference and a small, explicit reusable
 runtime contract. Concentrate on a complete clone-to-application-change journey.
 Application code owns domain semantics; cfctl owns infrastructure operations in
-this operator workspace. Independent public adopters retain a standalone
+a governed account. Independent public adopters retain a standalone
 Wrangler path. The starter must not require the operator's home directory.
 
 The source of potential advantage is that examples, runtime integration, and

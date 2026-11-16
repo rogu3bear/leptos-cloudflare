@@ -3,12 +3,16 @@
 A local clone, build, local D1 database, and Wrangler local server do not need
 provider credentials. Select the production operating context explicitly.
 
-## This operator workspace: governed cfctl
+Choose the standalone section for an independently operated account. Choose the
+[cfctl control guide](cfctl.md) when the account owner selected that lane;
+installation alone selects neither an account nor a control policy.
+
+## Governed cfctl account
 
 cfctl owns credential storage and lifecycle as well as Cloudflare live reads,
 change preparation, approval, execution, and post-change verification. Check
 current `cfctl doctor`, `cfctl auth --help`, and `cfctl keys --help` before a
-release; an old Keychain diagnosis is not current state. Use the catalog guide
+release. Use the installed catalog guide
 for the intended operation. Stop on an unavailable capability rather than using
 a raw API or direct Wrangler provider write.
 
@@ -38,7 +42,7 @@ calling credential automation migrated; removal here does not prove that.
 
 An independently operated clone may use Cloudflare's scoped API-token setup
 and the pinned Wrangler commands in README and the edge-deployment guide.
-cfctl, this operator's home directory, and its shared scripts are not required.
+No cfctl installation, maintainer-home files or shared scripts are required.
 Keep the token account-scoped, least-privileged, and limited to your chosen
 release window. Do not copy the token-minter credential into the project.
 Supply `CLOUDFLARE_API_TOKEN` using your platform's protected secret injection

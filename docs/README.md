@@ -1,34 +1,32 @@
 # Guides
 
-Documentation for building full-stack Rust applications on Cloudflare with Leptos.
+Start with [AGENTS.md](../AGENTS.md) and the [README Quick Start](../README.md).
+Local development needs no Cloudflare account or controller.
 
-## Start Here
+## Build your application
 
-- **[Field-guide product and design contract](../HORIZON.md)** -- The current route inventory, selected visual direction, responsive behavior, evidence language, and review state.
-- **[How Leptos Works](how-leptos-works.md)** -- The compilation model, WASM vs SSR, hydration, server functions, reactivity. Read this first if you're new to Leptos or full-stack WASM.
+- [Adopt a name and replace the sample](adopting.md)
+- [Agent playbook: owners, checks and troubleshooting](agent-playbook.md)
+- [How Leptos works: SSR, hydration and server functions](how-leptos-works.md)
+- [Add routes, server functions and D1 features](building-features.md)
+- [Executable patterns](../patterns/README.md)
+- [Realtime and Durable Objects](realtime.md)
+- [Reference design](DESIGN.md)
 
-## Deployment Models
+## Prepare provider operations
 
-Two paths depending on your needs:
+- [Credential profiles: standalone or governed](credentials.md)
+- [Optional cfctl control](cfctl.md)
+- [Workers deployment and additional bindings](edge-deployment.md)
+- [Pages production preparation and readback](pages-production.md)
+- [Hybrid deployments: Containers and Tunnels](hybrid-deployment.md)
+- [Release requirements](../RELEASE.md)
 
-- **[Edge Deployment](edge-deployment.md)** -- Everything on Cloudflare's edge. Workers for compute, D1 for SQL, R2 for files, KV for cache, Queues for background work, Durable Objects for coordination. No servers to manage. This is the default and recommended starting point.
+## Maintain the template
 
-- **[Hybrid Deployment](hybrid-deployment.md)** -- Edge Workers + Containers for heavy workloads (native binaries, long-running processes, ML) and/or Tunnels for connecting private infrastructure. For when you outgrow the Worker sandbox.
-
-## Building
-
-- **[Building Features](building-features.md)** -- Practical guide to extending this starter. Adding routes, server functions, D1 tables, components, and styles. Covers error handling, secrets, and verification.
-- **[Realtime and WebSockets](realtime.md)** -- WebSocket routing contract, template capability endpoint, and the shared-state Durable Object pattern.
-
-## For AI Agents
-
-- **[Agent Playbook](agent-playbook.md)** -- Structured instruction set for AI coding agents (Claude Code, Codex, etc.) to bootstrap and develop on this project. Exact commands, expected outputs, file ownership map, verification protocol, and troubleshooting.
-
-## Adoption and release acceptance
-
-- [Adopting the starter](adopting.md)
-- [Credential profiles](credentials.md)
-- [Current acceptance criteria](acceptance-criteria.md)
+- [Application adoption acceptance](acceptance-criteria.md)
 - [Reference website acceptance](reference-site-acceptance.md)
-
-Pages production source qualification: [configuration, upload compilation, migrations and readback](pages-production.md). This local preparation contract does not establish a deployed site.
+- [Agent-template review criteria](template-acceptance.md)
+- [Source-size and exception rules](repository-cleanup.md)
+- [Runtime ownership decisions](untangle-decisions.md)
+- [Starter scope and strategy](strategy.md)

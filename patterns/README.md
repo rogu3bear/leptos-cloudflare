@@ -75,4 +75,4 @@ More patterns (auth, R2 uploads, background work, etc.) are planned.
 
 ## Long-Term Vision
 
-This layer is the primary place where the template will grow its real-world value while protecting the minimal, trustworthy nature of the core starter. See `STRATEGY.md` in the project root for broader context.
+This layer is the primary place where the template will grow its real-world value while protecting the minimal, trustworthy nature of the core starter. See `docs/strategy.md` for broader context.
