@@ -191,3 +191,8 @@ namespace. Native regression checks cover both old and new private paths.
 Both environments must additionally report fail-closed project settings before
 upload and during final readback; source tests do not establish provider quota
 behavior.
+
+The final source follow-up advances transitive `xxhash-rust` from 0.8.15 to
+patched 0.8.16 for [GHSA-6g2r-675j-hx59](https://github.com/advisories/GHSA-6g2r-675j-hx59).
+Cargo changed only that package version/checksum; the generated-lock exception
+hash was reviewed and refreshed. The three existing audit warnings remain.
