@@ -110,6 +110,12 @@ try {
   success(run("/bin/bash", ["scripts/init.sh", "cli-app"], { cwd: fixture }));
   assert.equal(Bun.TOML.parse((await snapshot())[0]).package.name, "cli-app");
 
+  const preCollision = (await snapshot())[1];
+  await adoptProject(fixture, "inventory");
+  assert.match((await snapshot())[1], /^ "inventory [0-9.]+",$/m);
+  await adoptProject(fixture, "cli-app");
+  assert.equal((await snapshot())[1], preCollision);
+
   const commentedCargo = (await snapshot())[0].replace("reference-site = false", "reference-site = true # public template");
   await writeFile(join(fixture, "Cargo.toml"), commentedCargo);
   await adoptProject(fixture, "comment-app");

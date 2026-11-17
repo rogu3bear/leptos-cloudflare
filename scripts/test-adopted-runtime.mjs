@@ -41,12 +41,15 @@ pub fn HomePage() -> impl IntoView {
   const source = await readFile(app, "utf8");
   assert.ok(source.includes('<Route path=WildcardSegment("any")'));
   await writeFile(app, source.replace('<Route path=WildcardSegment("any")', '<Route path=StaticSegment("adopted") view=HomePage ssr=SsrMode::OutOfOrder/>\n                    <Route path=WildcardSegment("any")'));
+  const history = join(fixture, "hydration-history");
+  await mkdir(history);
   for (const command of [
     [process.execPath, "scripts/verify-architecture-contract.mjs"],
     ["bash", "scripts/build-edge.sh"],
     [process.execPath, "scripts/test-worker-boundaries.mjs"],
   ]) {
-    const env = { ...process.env, LEPTOS_BOUNDARY_DOCUMENT_PATH: "/adopted" };
+    const env = { ...process.env, LEPTOS_BOUNDARY_DOCUMENT_PATH: "/adopted",
+      LEPTOS_HYDRATION_HISTORY: history, LEPTOS_RELEASE_BASELINE: "first-release" };
     let launch = command;
     if (command[0] === "bash" && process.env.DISK_GUARD_RESERVATION) {
       const budget = process.env.LEPTOS_ACCEPTANCE_BUILD_BUDGET_GB;

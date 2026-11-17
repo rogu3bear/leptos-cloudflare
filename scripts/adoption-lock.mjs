@@ -17,14 +17,39 @@ export function renameLock(lock, previous, name) {
   const trailer = lock.match(/\n\n\[metadata\][\s\S]*$|\s+$/)?.[0] ?? "";
   const body = lock.slice(0, lock.length - trailer.length);
   const [header, ...packages] = body.split(/\n\n(?=\[\[package\]\]\n)/);
-  const packageName = block => /^\[\[package\]\]\nname = "([^"]+)"/.exec(block)?.[1];
-  const roots = packages.filter(block => packageName(block) === previous && !/^source =/m.test(block));
+  const records = packages.map(block => {
+    const [{ name, source, version }] = Bun.TOML.parse(block).package;
+    return { name, source, version, block };
+  });
+  const roots = records.filter(pkg => pkg.name === previous && !pkg.source);
   assert.equal(roots.length, 1, "Expected one local package in Cargo.lock");
-  assert(!packages.some(block => packageName(block) === name), "Project name collides with a locked dependency");
-  const others = packages.filter(block => block !== roots[0]);
-  const index = others.findIndex(block => packageName(block) > name);
-  others.splice(index < 0 ? others.length : index, 0, roots[0].replace('name = "' + previous + '"', 'name = "' + name + '"'));
-  return [header, ...others].join("\n\n") + trailer;
+  const root = roots[0];
+  root.name = name;
+  root.block = root.block.replace(`name = "${previous}"`, `name = "${name}"`);
+  // References to a registry dependency gain or lose qualifiers when its
+  // name starts or stops matching the local package. Preserve its identity.
+  function reference(pkg, siblings) {
+    if (siblings.length === 1) return pkg.name;
+    const versioned = `${pkg.name} ${pkg.version}`;
+    return siblings.filter(s => s.version === pkg.version).length === 1
+      ? versioned : `${versioned} (${pkg.source})`;
+  }
+  const replacements = new Map();
+  for (const affected of [previous, name]) {
+    const deps = records.filter(pkg => pkg !== root && pkg.name === affected);
+    const before = affected === previous ? [...deps, root] : deps;
+    const after = affected === name ? [...deps, root] : deps;
+    for (const pkg of deps) replacements.set(reference(pkg, before), reference(pkg, after));
+  }
+  for (const pkg of records) {
+    pkg.block = pkg.block.replace(/^ "([^"]+)",$/gm, (line, ref) =>
+      replacements.has(ref) ? ` "${replacements.get(ref)}",` : line);
+  }
+  const others = records.filter(pkg => pkg !== root);
+  const index = others.findIndex(pkg => pkg.name > name ||
+    (pkg.name === name && Bun.semver.order(pkg.version, root.version) >= 0));
+  others.splice(index < 0 ? others.length : index, 0, root);
+  return [header, ...others.map(pkg => pkg.block)].join("\n\n") + trailer;
 }
 
 export function renamedPolicy(original, lock, nextLock) {
