@@ -100,8 +100,8 @@ cargo fmt --check
 The full gate checks adoption/configuration contracts, formatting, Rust tests,
 dependency audit, both WASM builds, asset integrity, Workers and Pages runtime
 boundaries, the derived Pages release directory and a deployment dry run.
-It performs no live deployment. Missing mandatory tools fail visibly. Three
-existing dependency warnings are documented in [RELEASE.md](RELEASE.md).
+It performs no live deployment. Missing mandatory tools fail visibly. Current
+dependency warnings are documented in [RELEASE.md](RELEASE.md).
 Remote CI is intentionally absent.
 
 | Change | Start here |

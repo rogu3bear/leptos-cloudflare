@@ -48,6 +48,9 @@ A governed failure never authorizes switching lanes.
 Dependency audit notes (recheck the advisory database for each candidate):
 
 - `cargo audit` reports zero known vulnerabilities.
+- `RUSTSEC-2026-0543` marks `chrono 0.4.44` unmaintained. The template
+  receives it through `worker 0.7.5`. The advisory lists no patched version.
+  Recheck when updating the Worker SDK.
 - `RUSTSEC-2024-0436` remains for transitive `paste 1.0.15` through
   Leptos/Tachys (`either_of`, `reactive_graph`, and related view machinery).
   RustSec classifies it as unmaintained and publishes no patched `paste`
