@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { createHash } from "node:crypto";
 import { strict as assert } from "node:assert";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -15,11 +16,25 @@ try {
   await writeFile(join(fixture, "build/index_bg.wasm"), "wasm fixture");
   await writeFile(join(fixture, "target/site/pkg/app.js"), "asset fixture");
   await writeFile(join(fixture, "target/site/logo.svg"), "adopter logo");
+  const name = Bun.TOML.parse(await readFile(join(fixture, "Cargo.toml"), "utf8")).package.metadata.leptos["output-name"];
+  async function client(suffix) {
+    const bytes = Buffer.from("/api/create_todo" + suffix);
+    const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+    const path = "/pkg/" + name + "." + hash + ".wasm";
+    await writeFile(join(fixture, "target/site", path), bytes);
+    return path;
+  }
+  await client("111");
+  const wasm = await client("222");
+  await writeFile(join(fixture, "target/site/asset-manifest.json"), JSON.stringify({ wasm }));
   const shim = Bun.spawnSync([process.execPath, join(root, "scripts/write-worker-shim.mjs")], { cwd: fixture, stderr: "pipe" });
   assert.equal(shim.exitCode, 0, new TextDecoder().decode(shim.stderr));
   const output = join(fixture, "target/output");
   let result = run(output);
   assert.equal(result.exitCode, 0, new TextDecoder().decode(result.stderr));
+  for (const path of [join(fixture, "build/_worker.js"), join(output, "_worker.js")]) {
+    assert((await readFile(path, "utf8")).includes('"/api/create_todo111":"/api/create_todo222"'));
+  }
   assert.equal(await readFile(join(output, "functions/index_bg.wasm"), "utf8"), "wasm fixture");
   assert.equal(await readFile(join(output, "pkg/app.js"), "utf8"), "asset fixture");
   assert.equal(await readFile(join(output, "logo.svg"), "utf8"), "adopter logo");

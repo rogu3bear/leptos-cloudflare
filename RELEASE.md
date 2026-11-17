@@ -108,8 +108,11 @@ and `EdgeHydrationScripts` bootstrap in `src/edge/shell.rs`. Its performance
 mark signals that the browser returned from `hydrate()`. Prepare and
 qualify that new rollback package before switching traffic. An unmodified
 historical deployment cannot contain assets first published after it was built.
-Keep compatible server-function endpoints available for clients that remain
-open across the switch. Asset retention alone cannot preserve a removed API.
+Leptos includes the build directory in generated server-function paths. The
+Workers and Pages shims forward the six template functions’ exact retained
+client paths to their matching active paths, preserving the request guards.
+For new application functions, declare stable endpoint names and preserve
+their input and output contracts across releases.
 
 The full gate checks archived bytes over HTTP on Workers, Pages and the derived
 Pages directory. Pinned WebKit executes hydration on every profile. The reference

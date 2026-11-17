@@ -60,6 +60,8 @@ requireSnippet("build/_worker.js", shim, "this.ctx.tracing.enterSpan(");
 requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.telemetry.schema_version", 1)');
 requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.boundary", boundary)');
 requireSnippet("build/_worker.js", shim, "super.fetch(leptosRequest)");
-requireSnippet("build/_worker.js", shim, 'const leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;');
+requireSnippet("build/_worker.js", shim, 'let leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;');
+
+requireSnippet("build/_worker.js", shim, "if (Object.hasOwn(aliases, url.pathname))");
 
 console.log("[verify-worker-runtime] Worker shim, compatibility date, sampled observability, low-cardinality SSR/server-function spans, Assets binding, WebSocket lane, and SSR fallback are aligned");

@@ -41,4 +41,15 @@ assert.equal((await pages.fetch(new Request("https://test/_server/dispatch.mjs")
 for (const path of ["/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) {
   assert.equal((await pages.fetch(new Request(`https://test${path}`))).status, 404, "private modules must never reach ASSETS through encoded traversal");
 }
+const LegacyWorker = withDispatch(Application, { aliases: { "/api/create_todo111": "/api/create_todo222" } });
+const legacy = new LegacyWorker();
+const oldRequest = new Request("https://test/api/create_todo111?q=x", { method: "POST", headers: {origin: "https://test"}, body: "title=old" });
+await legacy.fetch(oldRequest);
+assert.equal(received.url, "https://test/api/create_todo222?q=x");
+assert.equal(received.method, "POST");
+assert.equal(received.headers.get("origin"), "https://test");
+assert.equal(await received.text(), "title=old");
+assert.equal(oldRequest.bodyUsed, false);
+await legacy.fetch(new Request("https://test/api/create_todo333"));
+assert.equal(received.url, "https://test/api/create_todo333");
 console.log("[dispatch] application/asset routing, API stream isolation, spans and socket override passed");

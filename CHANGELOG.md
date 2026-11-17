@@ -4,6 +4,8 @@
 
 - Preserve verified, content-addressed client bundles across upgrades and rebuilt
   rollback releases for Workers and Pages.
+- Preserve the six reference server-function URLs used by retained clients when
+  a rebuild in a different directory changes Leptos’s generated route suffix.
 - Run tracked WebKit hydration and server-function checks in the local release
   gate, including the mutation response behind the optimistic todo control.
 

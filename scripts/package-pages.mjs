@@ -2,6 +2,7 @@
 
 // Package an already verified edge build without changing the Workers output.
 import { constants } from "node:fs";
+import { hydrationAliases } from "./hydration-routes.mjs";
 import { workerEntry } from "./worker-entry.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 import { access, cp, mkdir, readdir, realpath, writeFile } from "node:fs/promises";
@@ -79,6 +80,7 @@ const protectedShim = workerEntry({
   assetPrefix: project.assetPrefix,
   assetPaths: assets.sort(),
   blockServerModules: true,
+  aliases: await hydrationAliases(site, project.leptos["output-name"]),
 });
 await Promise.all([access("build/index.js", constants.R_OK), access("build/index_bg.wasm", constants.R_OK), access("build/dispatch.mjs", constants.R_OK)]);
 await mkdir(destination, { recursive: true });

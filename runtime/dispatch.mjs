@@ -43,7 +43,7 @@ function handleRealtimeSocket() {
   });
 }
 
-export function withDispatch(LeptosWorker, { assetPaths = null, blockServerModules = false, assetPrefix = "/pkg/" } = {}) {
+export function withDispatch(LeptosWorker, { assetPaths = null, aliases = {}, blockServerModules = false, assetPrefix = "/pkg/" } = {}) {
   const pagesAssets = assetPaths === null ? null : new Set(assetPaths);
   return class extends LeptosWorker {
   handleRealtimeSocket(_request) { return handleRealtimeSocket(); }
@@ -81,7 +81,11 @@ export function withDispatch(LeptosWorker, { assetPaths = null, blockServerModul
 
     // Keep Rust's request-body cancellation isolated from the native request.
     // Rust rejects declared over-limit bodies early and caps streamed bytes before parsing.
-    const leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;
+    let leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;
+    if (Object.hasOwn(aliases, url.pathname)) {
+      url.pathname = aliases[url.pathname];
+      leptosRequest = new Request(url, leptosRequest);
+    }
     const boundary = requestBoundary(url.pathname);
     if (!this.ctx.tracing?.enterSpan) {
       return super.fetch(leptosRequest);
