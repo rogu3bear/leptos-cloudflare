@@ -12,15 +12,12 @@ rustup target add wasm32-unknown-unknown
 
 ## Expected Checks
 
-Run the full release readiness verification before opening a pull request:
+Follow [Change and verify](README.md#change-and-verify) before opening a pull
+request. It covers the required release baseline, full local gate and focused
+checks.
 
-```bash
-./scripts/verify.sh
-```
-
-This is the authoritative local release gate. For quick iteration on small changes you can use the lighter protocol described in `docs/agent-playbook.md`.
-
-`wrangler.toml` contains placeholder D1 IDs until a new project initializes the template. The dependency check warning for those placeholders is expected in the template repo.
+`wrangler.toml` contains placeholder D1 IDs for local use. Project naming preserves them. Use the [Workers guide](docs/edge-deployment.md)
+or the [Pages guide](docs/pages-production.md) to prepare production configuration.
 
 ## Change Boundaries
 

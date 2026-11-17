@@ -95,7 +95,6 @@ Before the full gate, set `LEPTOS_RELEASE_BASELINE` to the recorded outgoing
 bundle ID, or `first-release` for a new application’s initial release.
 See [release switches](RELEASE.md#hydration-assets-during-release-switches).
 
-
 ```bash
 cargo check --features ssr       # focused server iteration
 cargo fmt --check
@@ -103,15 +102,14 @@ cargo fmt --check
 ```
 
 The full gate checks adoption/configuration contracts, formatting, Rust tests,
-dependency audit, both WASM builds, asset integrity, WebKit hydration and server-function
-checks, Workers and Pages runtime
-boundaries, the derived Pages release directory and a deployment dry run.
+dependency audit, both WASM builds, asset integrity, WebKit hydration and
+server-function checks, Workers and Pages runtime boundaries, the prepared
+Pages production bundle and a deployment dry run.
 It performs no live deployment. Missing mandatory tools fail visibly. Current
 dependency warnings are documented in [RELEASE.md](RELEASE.md).
-Bootstrap installs the pinned Playwright WebKit browser. Keep the application’s
-hydration history with its release artifacts across builds and rollbacks. See
-[release preparation](RELEASE.md#hydration-assets-during-release-switches).
-Remote CI is intentionally absent.
+Bootstrap installs pinned Playwright WebKit. For focused checks, use the
+[agent playbook](docs/agent-playbook.md). Remote CI is intentionally absent.
+Adding hosted workflows requires an explicit operator decision.
 
 | Change | Start here |
 |---|---|

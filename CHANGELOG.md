@@ -37,6 +37,8 @@
 - Reject writes at storage capacity without evicting another session’s records.
 - Add the append-only admission migration and native boundary/concurrency/privacy
   regressions across Workers, Pages and the derived Pages release directory.
+- Apply migration 0004 before running this version. Preserve its database-local
+  key during backup and recovery.
 - Source patch only; no live Cloudflare migration or deployment.
 
 ## 0.1.4
@@ -51,6 +53,8 @@
 - Preserve Workers oversized-body rejection and genuine resource descriptors
   through nested builds and adopter qualification.
 - Update Tokio and xxhash-rust to patched versions selected in Cargo.lock.
+  The xxhash-rust update to 0.8.16 addresses
+  [GHSA-6g2r-675j-hx59](https://github.com/advisories/GHSA-6g2r-675j-hx59).
 - Distribute GitHub template source only; provider deployment and live acceptance
   remain separate authorized operations.
 
@@ -92,3 +96,5 @@
 - Added release, security, contributing, realtime, and agent operating docs.
 - Updated release verification to exercise the real template gates.
 - Updated compatible Rust dependencies in `Cargo.lock`, including Leptos 0.8.19 and wasm-bindgen 0.2.121.
+- Updated `anyhow` to 1.0.103 for RUSTSEC-2026-0190 on the Leptos hot-reload path
+  and `event-listener` to 5.4.2 for RUSTSEC-2026-0221 on the reactive graph path.
