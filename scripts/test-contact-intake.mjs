@@ -25,6 +25,10 @@ export async function testContactIntake(origin, { query }) {
   }
   const count = () => query("SELECT COUNT(*) AS total FROM contact_submissions")[0].total;
   assert.equal(count(), 0);
+  const invalidNetwork = await submit(await session(), {}, "not-an-ip");
+  assert.ok(invalidNetwork.status >= 400);
+  assert.match(invalidNetwork.body, /Client network identity is unavailable/);
+  assert.equal(count(), 0, "invalid network identity must leave the submissions table empty");
   assert.equal((await submit()).status, 200);
   assert.deepEqual(query("SELECT name,email,topic,message FROM contact_submissions"), [{ name: "Ada Lovelace", email: "ada@example.com", topic: "Local proof", message: "A synthetic contact message for local qualification." }]);
   const admission = query("SELECT admission_key FROM contact_submissions")[0].admission_key;
@@ -45,7 +49,6 @@ export async function testContactIntake(origin, { query }) {
   assert.equal(count(), 8);
   assert.equal((await submit(await session(), {}, "198.51.100.11")).status, 200, "another IP has an independent budget");
   assert.equal(count(), 9);
-  assert.ok((await submit(cookie, {}, "not-an-ip")).status >= 400, "invalid network identity fails closed");
   query("DELETE FROM contact_submissions; DELETE FROM anonymous_admission_key");
   const concurrent = await Promise.all(Array.from({ length: 10 }, () => submit()));
   assert.equal(concurrent.filter((response) => response.status === 200).length, 3, "atomic hourly budget");

@@ -87,8 +87,8 @@ pub async fn search_todos(query: String, status: String) -> AppResult<TodosRespo
 }
 
 pub async fn create_todo(title: String) -> AppResult<TodoItem> {
-    let (db, session_id, admission_key) = write_context().await?;
     let title = normalize_todo_title(&title).map_err(AppError::client)?;
+    let (db, session_id, admission_key) = write_context().await?;
     let session_arg = D1Type::Text(&session_id);
     let title_arg = D1Type::Text(&title);
     let admission_arg = D1Type::Text(&admission_key);

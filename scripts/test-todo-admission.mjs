@@ -6,13 +6,22 @@ export async function testTodoAdmission(origin, { query }) {
   const cookie = page.headers.get("set-cookie").split(";")[0];
   const endpoint = [...html.matchAll(/action="([^"]+)"/g)].map((match) => match[1]).find((path) => path.startsWith("/api/create_todo"));
   assert.ok(endpoint);
-  async function create(session = cookie, ip = "203.0.113.40") {
+  async function create(session = cookie, ip = "203.0.113.40", title = "Admission fixture") {
     const response = await fetch(origin + endpoint, { method: "POST", headers: { origin, cookie: session,
       accept: "application/json", "content-type": "application/x-www-form-urlencoded", "cf-connecting-ip": ip },
-      body: "title=Admission+fixture", signal: AbortSignal.timeout(10_000) });
+      body: new URLSearchParams({ title }), signal: AbortSignal.timeout(10_000) });
     const text = await response.text(); return { status: response.status, text };
   }
   query("DELETE FROM todos");
+  query("ALTER TABLE anonymous_admission_key RENAME TO saved_admission_key");
+  try {
+    const invalid = await create(cookie, "203.0.113.40", "   ");
+    assert.ok(invalid.status >= 400);
+    assert.match(invalid.text, /Todo titles cannot be empty/);
+    assert.equal(query("SELECT COUNT(*) AS total FROM todos")[0].total, 0);
+  } finally {
+    query("ALTER TABLE saved_admission_key RENAME TO anonymous_admission_key");
+  }
   const first = await create(); assert.equal(first.status, 200, first.text);
   const { admission_key: admission, session_id: session } = query("SELECT admission_key,session_id FROM todos")[0];
   assert.match(admission, /^[0-9a-f]{64}$/); assert.match(session, /^[0-9a-f]{64}$/);

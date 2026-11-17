@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.6
+
+- Validate todo titles before accessing D1 so a storage failure cannot mask an input error.
+- Check that malformed client network identity returns the contact identity error and leaves submissions empty on Workers and Pages.
+
 ## 0.1.5
 
 - Enforce the 4 KiB server-function limit on streamed bytes, including chunked
