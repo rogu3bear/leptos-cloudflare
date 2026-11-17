@@ -76,7 +76,7 @@ pub fn ContactPage() -> impl IntoView {
                 <div class="section-stack section-stack--related">
                     <p class="eyebrow">"Field note 006 · bounded intake"</p>
                     <h1>"Inspect an intake boundary."</h1>
-                    <p class="page-lede">"This form demonstrates server-side validation, honeypot filtering, D1 persistence, and session-scoped caps. It does not send email, a webhook, a Queue message, or an operator notification."</p>
+                    <p class="page-lede">"This form demonstrates server-side validation, honeypot filtering, D1 persistence, and shared client-network budgets. It does not send email, a webhook, a Queue message, or an operator notification."</p>
                     <div class="lab-proof"><EvidenceTag kind=EvidenceKind::Source/><span>"Delivery beyond local D1 is intentionally out of scope."</span></div>
                 </div>
 

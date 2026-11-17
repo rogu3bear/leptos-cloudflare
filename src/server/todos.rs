@@ -4,7 +4,7 @@ use worker::D1Type;
 use crate::todos::{normalize_todo_title, TodoItem, TodoStats, TodoUpdateOutcome, TodosResponse};
 
 use super::{
-    d1::{count as db_count_to_usize, limit_arg as d1_limit_arg, request_database},
+    d1::{count as db_count_to_usize, limit_arg as d1_limit_arg, request_database, write_context},
     AppError, AppResult,
 };
 
@@ -25,11 +25,6 @@ struct TodoStatsRow {
     total: i64,
     open: i64,
     completed: i64,
-}
-
-#[derive(Debug, Deserialize)]
-struct CountRow {
-    total: i64,
 }
 
 pub async fn list_todos() -> AppResult<TodosResponse> {
@@ -92,36 +87,35 @@ pub async fn search_todos(query: String, status: String) -> AppResult<TodosRespo
 }
 
 pub async fn create_todo(title: String) -> AppResult<TodoItem> {
-    let (db, session_id) = request_database()?;
+    let (db, session_id, admission_key) = write_context().await?;
     let title = normalize_todo_title(&title).map_err(AppError::client)?;
-
-    if count_session_todos(&db, session_id.as_str()).await? >= MAX_TODOS_PER_SESSION {
-        return Err(AppError::client(format!(
-            "This demo stores up to {MAX_TODOS_PER_SESSION} todos per browser session. Delete a few to keep going."
-        )));
-    }
-
-    trim_global_todos(&db).await?;
-
-    let session_arg = D1Type::Text(session_id.as_str());
-    let title_arg = D1Type::Text(title.as_str());
-    let args = [&session_arg, &title_arg];
-
-    let result = db
-        .prepare("INSERT INTO todos (session_id, title) VALUES (?1, ?2)")
-        .bind_refs(args)
+    let session_arg = D1Type::Text(&session_id);
+    let title_arg = D1Type::Text(&title);
+    let admission_arg = D1Type::Text(&admission_key);
+    let session_limit = d1_limit_arg(MAX_TODOS_PER_SESSION)?;
+    let global_limit = d1_limit_arg(MAX_TODOS_GLOBAL)?;
+    let row = db
+        .prepare(
+            "INSERT INTO todos (session_id, title, admission_key)
+         SELECT ?1, ?2, ?3
+         WHERE (SELECT COUNT(*) FROM todos WHERE session_id = ?1) < ?4
+           AND (SELECT COUNT(*) FROM todos WHERE admission_key = ?3) < ?4
+           AND (SELECT COUNT(*) FROM todos) < ?5
+         RETURNING id, title, completed, strftime('%Y-%m-%d %H:%M UTC', created_at) AS created_at",
+        )
+        .bind_refs([
+            &session_arg,
+            &title_arg,
+            &admission_arg,
+            &session_limit,
+            &global_limit,
+        ])
         .map_err(|_| AppError::Internal)?
-        .run()
+        .first::<TodoRow>(None)
         .await
         .map_err(|_| AppError::Internal)?;
-
-    let inserted_id = result
-        .meta()
-        .map_err(|_| AppError::Internal)?
-        .and_then(|meta| meta.last_row_id)
-        .ok_or_else(|| AppError::Internal)?;
-
-    get_todo_by_id(&db, inserted_id, session_id.as_str()).await
+    row.map(map_todo).ok_or_else(|| AppError::client(
+        "This demo's session, network or storage limit is full. Delete your own records or ask the operator."))
 }
 
 pub async fn toggle_todo(id: i64) -> AppResult<TodoItem> {
@@ -263,60 +257,6 @@ async fn load_todo_stats(
         open: db_count_to_usize(row.open)?,
         completed: db_count_to_usize(row.completed)?,
     })
-}
-
-async fn count_session_todos(db: &worker::D1Database, session_id: &str) -> AppResult<usize> {
-    let session_arg = D1Type::Text(session_id);
-    let row = db
-        .prepare("SELECT COUNT(*) AS total FROM todos WHERE session_id = ?1")
-        .bind_refs(&session_arg)
-        .map_err(|_| AppError::Internal)?
-        .first::<CountRow>(None)
-        .await
-        .map_err(|_| AppError::Internal)?
-        .ok_or_else(|| AppError::Internal)?;
-
-    db_count_to_usize(row.total)
-}
-
-async fn count_all_todos(db: &worker::D1Database) -> AppResult<usize> {
-    let row = db
-        .prepare("SELECT COUNT(*) AS total FROM todos")
-        .first::<CountRow>(None)
-        .await
-        .map_err(|_| AppError::Internal)?
-        .ok_or_else(|| AppError::Internal)?;
-
-    db_count_to_usize(row.total)
-}
-
-async fn trim_global_todos(db: &worker::D1Database) -> AppResult<()> {
-    let total = count_all_todos(db).await?;
-    if total < MAX_TODOS_GLOBAL {
-        return Ok(());
-    }
-
-    let overflow = total + 1 - MAX_TODOS_GLOBAL;
-    let overflow_arg = d1_limit_arg(overflow)?;
-    let result = db
-        .prepare(
-            "DELETE FROM todos
-             WHERE id IN (
-                SELECT id
-                FROM todos
-                ORDER BY id ASC
-                LIMIT ?1
-             )",
-        )
-        .bind_refs(&overflow_arg)
-        .map_err(|_| AppError::Internal)?
-        .run()
-        .await
-        .map_err(|_| AppError::Internal)?;
-
-    result.meta().map_err(|_| AppError::Internal)?;
-
-    Ok(())
 }
 
 async fn get_todo_by_id(db: &worker::D1Database, id: i64, session_id: &str) -> AppResult<TodoItem> {

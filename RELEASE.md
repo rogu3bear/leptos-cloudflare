@@ -178,3 +178,18 @@ The source archive must match the independently reviewed integrated commit.
 Publish no credentials, generated runtime output, private qualification packets
 or provider identities. Local Workers/Pages proof is not deployment or live
 acceptance; no Cloudflare deployment is included in this source release.
+
+## Security patch 0.1.5
+
+Enforce the 4 KiB body limit on actual streamed bytes before server-function
+collection, including chunked requests. Native regressions test the exact boundary,
+413 rejection and retained security headers on Workers, Pages and derived Pages.
+
+Anonymous contact admission uses an atomic conditional insert for three/hour and
+eight/day per keyed client-IP digest. Todo creation atomically bounds session,
+network and global capacity. Cookie rotation cannot reset the network budget;
+full contact/todo storage rejects without evicting unrelated sessions.
+
+Apply the append-only fourth migration before using this code. Preserve its
+database-local key during backup/recovery; never treat key deletion as quota
+recovery. No provider migration/deployment is included in the source release.

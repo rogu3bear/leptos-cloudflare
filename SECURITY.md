@@ -44,3 +44,15 @@ rg -n --hidden --glob '!target/**' --glob '!build/**' --glob '!var/**' --glob '!
 bash ./scripts/build-edge.sh
 bunx wrangler@4.120.1 deploy --dry-run
 ```
+
+## Anonymous write limits
+
+The demo’s ownership cookie is not an authenticated user or tenant identity.
+Anonymous write budgets use a keyed digest of the Cloudflare-supplied client IP;
+NAT users share budgets and distributed clients can use multiple addresses. Raw
+IP addresses are not stored by admission. Contact limits and inserts are one
+conditional database write; full storage rejects new writes without global eviction.
+The database-local secret is generated with the runtime CSPRNG on first write.
+Keep its table private and preserve it during backup/recovery; do not reset it
+to clear quotas. Quotas do not replace application authentication or layered abuse
+controls. Missing/invalid trusted IP metadata fails closed.

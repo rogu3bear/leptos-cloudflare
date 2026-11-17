@@ -1,4 +1,6 @@
 #[cfg(feature = "ssr")]
+mod body;
+#[cfg(feature = "ssr")]
 mod headers;
 mod policy;
 #[cfg(feature = "ssr")]
@@ -9,7 +11,7 @@ mod shell;
 #[cfg(feature = "ssr")]
 use self::{
     headers::{apply_response_headers, content_security_policy},
-    policy::{reject_api_request, server_fn_body_too_large, MAX_SERVER_FUNCTION_BODY_BYTES},
+    policy::{reject_api_request, server_fn_body_too_large},
     session::request_identity,
 };
 
@@ -19,7 +21,6 @@ pub(crate) async fn handle(
     env: worker::Env,
 ) -> worker::Result<axum::http::Response<axum::body::Body>> {
     use axum::body::Body;
-    use axum::extract::DefaultBodyLimit;
     use axum::http::{Response, StatusCode};
     use axum::Router;
     use leptos::prelude::*;
@@ -51,15 +52,23 @@ pub(crate) async fn handle(
         return Ok(response);
     }
 
+    let req = match body::bounded_api_request(req).await {
+        Ok(req) => req,
+        Err(mut response) => {
+            apply_response_headers(&mut response, &content_security_policy, &request_identity)?;
+            return Ok(response);
+        }
+    };
+
     let routes = generate_route_list(crate::app::App);
     let state = crate::server::AppState::new(
         leptos_options.clone(),
         env,
         request_identity.session_id.clone(),
+        request_identity.client_ip.clone(),
     );
 
     let mut router = Router::new()
-        .layer(DefaultBodyLimit::max(MAX_SERVER_FUNCTION_BODY_BYTES))
         .leptos_routes_with_context(
             &state,
             routes,

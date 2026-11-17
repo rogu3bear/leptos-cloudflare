@@ -6,6 +6,7 @@ const SESSION_ID_BYTES: usize = 32;
 pub(super) struct RequestIdentity {
     secure_cookie: bool,
     pub(super) session_id: String,
+    pub(super) client_ip: Option<String>,
     pub(super) set_cookie: bool,
 }
 
@@ -14,11 +15,13 @@ pub(super) fn request_identity(req: &worker::HttpRequest) -> worker::Result<Requ
     Ok(match session_id {
         Some(session_id) => RequestIdentity {
             secure_cookie: is_secure_request(req),
+            client_ip: client_ip(req),
             session_id,
             set_cookie: false,
         },
         None => RequestIdentity {
             secure_cookie: is_secure_request(req),
+            client_ip: client_ip(req),
             session_id: random_session_id()?,
             set_cookie: true,
         },
@@ -89,4 +92,14 @@ fn is_secure_request(req: &worker::HttpRequest) -> bool {
             .get("x-forwarded-proto")
             .and_then(|value| value.to_str().ok())
             .is_some_and(|value| value.eq_ignore_ascii_case("https"))
+}
+
+fn client_ip(req: &worker::HttpRequest) -> Option<String> {
+    req.headers()
+        .get("cf-connecting-ip")?
+        .to_str()
+        .ok()?
+        .parse::<std::net::IpAddr>()
+        .ok()
+        .map(|ip| ip.to_string())
 }

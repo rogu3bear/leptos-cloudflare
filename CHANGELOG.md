@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.5
+
+- Enforce the 4 KiB server-function limit on streamed bytes, including chunked
+  requests, before deserialization.
+- Atomically enforce contact hourly/daily network budgets and todo capacity.
+- Preserve anonymous intake with keyed per-IP digests; cookie rotation no longer
+  resets the network budget, and NAT users share limits.
+- Reject writes at storage capacity without evicting another session’s records.
+- Add the append-only admission migration and native boundary/concurrency/privacy
+  regressions across Workers, Pages and the derived Pages release directory.
+- Source patch only; no live Cloudflare migration or deployment.
+
 ## 0.1.4
 
 - Ship public agent instructions, concise onboarding and distinct credential-free,

@@ -555,3 +555,12 @@ Hot-reloads on Worker changes. Does not hot-reload WASM — rebuild with `cargo 
 
 
 Both deployment targets share the application and D1 code. For Pages, package the completed edge build and use the separate Pages config; see [the Pages option](edge-deployment.md#pages-option) and [production preparation](pages-production.md). Test affected behavior on both targets before claiming release readiness.
+
+## Anonymous write admission
+
+Use `write_context().await` in `src/server/d1.rs` for new anonymous writes. It returns
+the database, ownership session and a keyed digest of the Cloudflare-observed client
+IP. Keep ownership predicates separate from this network budget. Use one conditional
+write for quota checks and insertion; never count then insert across separate awaits.
+At capacity, reject the write without deleting another user’s data. Do not reset
+limits from cookies, form fields or X-Forwarded-For.

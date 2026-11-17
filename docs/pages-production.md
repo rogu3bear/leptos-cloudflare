@@ -147,3 +147,10 @@ References: [Pages config and environments](https://developers.cloudflare.com/pa
 [deployment readback](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/get/).
 
 The [Pages fail-open/closed contract](https://developers.cloudflare.com/pages/functions/routing/#fail-open--closed) is a required project safety boundary; local Miniflare does not simulate provider quota exhaustion.
+
+The 0.1.5 admission patch requires migration `0004_anonymous_admission.sql` on each
+selected D1 database before using the new code. The owned migration pack binds its
+hash and schema assertions. The database-local key is initialized on first write;
+per-IP quotas survive cookie changes, NAT users share a budget, and full storage
+rejects new writes without eviction. Follow the [admission prerequisite](edge-deployment.md#anonymous-admission-prerequisite)
+for trusted-header, privacy and key-rotation limits. No remote migration is implied.

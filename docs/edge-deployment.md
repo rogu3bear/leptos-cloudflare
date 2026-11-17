@@ -690,3 +690,24 @@ The package command requires an empty output directory under the project `target
 
 
 Local tooling uses the exact Wrangler dependency in `package.json` and `bun.lock`; run `bun install --frozen-lockfile` (also done by bootstrap). The verification dry run launches this local CLI with a Node preload that validates and forwards the original Disk Guard descriptors. It still executes the configured build. API requests with bodies use an isolated request clone so cancellation by the Rust body adapter cannot reset the local Workers proxy; the Rust 4 KiB rejection remains authoritative.
+
+## Anonymous admission prerequisite
+
+Migration `0004_anonymous_admission.sql` adds admission indexes and the database-local
+key table. The first write generates its secret using the runtime CSPRNG; racing
+initializers load the same winning key. Preserve this table in backup/recovery.
+No raw client address is persisted by admission; digests remain pseudonymous data.
+Writes require a valid Cloudflare-supplied CF-Connecting-IP and fail closed if absent.
+Do not trust a caller-supplied forwarding header or expose an untrusted same-zone
+Worker proxy that can rewrite client identity. Cloudflare’s header semantics apply:
+https://developers.cloudflare.com/fundamentals/reference/http-headers/#cf-connecting-ip
+
+Users behind a NAT share quotas; changing networks can obtain another budget, so
+this is abuse mitigation rather than identity verification. Full stores reject new
+writes. Cleanup/retention is an explicit operator operation, not an anonymous
+request side effect. Key rotation changes all network digests and resets their
+association with old rows; coordinate it as an operator-controlled data change.
+
+Pre-migration records keep an empty admission key: they count toward global and
+existing session quotas, but historical IP budgets cannot be reconstructed.
+Migration preserves their contents and ownership. Do not backfill guessed IPs.

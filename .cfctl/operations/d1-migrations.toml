@@ -25,6 +25,10 @@ sha256 = "sha256:f900d67bda79e0e2ec0cb8b9a3e9cb512befc733c67a2a459e63eaa0de9609b
 path = "migrations/0003_contact_submissions.sql"
 sha256 = "sha256:878dc055bb79d6f845f69dd8286456c1b68ffe0e50863c822c6cf324d12e140d"
 
+[[operation.migration]]
+path = "migrations/0004_anonymous_admission.sql"
+sha256 = "sha256:686b3940b34ed125bec0ce0cf1f2b9340f57f16879722c0461b6802be387b39c"
+
 [[operation.assertion]]
 kind = "table_exists"
 table = "todos"
@@ -50,3 +54,27 @@ index = "idx_contact_submissions_session_created"
 
 [[operation.assertion]]
 kind = "foreign_key_check_empty"
+
+[[operation.assertion]]
+kind = "table_exists"
+table = "anonymous_admission_key"
+
+[[operation.assertion]]
+kind = "column_exists"
+table = "todos"
+column = "admission_key"
+
+[[operation.assertion]]
+kind = "column_exists"
+table = "contact_submissions"
+column = "admission_key"
+
+[[operation.assertion]]
+kind = "index_exists"
+table = "todos"
+index = "idx_todos_admission"
+
+[[operation.assertion]]
+kind = "index_exists"
+table = "contact_submissions"
+index = "idx_contact_admission_created"

@@ -140,3 +140,8 @@ See [SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 MIT
+
+Anonymous writes use per-IP admission budgets shared across cookies and users behind one NAT.
+Only a keyed digest is stored; ownership remains session-scoped. Full storage rejects
+new writes without deleting existing records. Apply all local migrations, including
+`0004_anonymous_admission.sql`, before running the updated application.

@@ -3,6 +3,8 @@
 import { createConnection } from "node:net";
 import { withLocalPreview, fetchBoundary } from "./local-preview.mjs";
 import { testResourceExplorer } from "./test-resource-explorer.mjs";
+import { testBodyLimit } from "./test-body-limit.mjs";
+import { testTodoAdmission } from "./test-todo-admission.mjs";
 import { testContactIntake } from "./test-contact-intake.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
@@ -150,9 +152,11 @@ async function runAssertions(origin) {
 async function main() {
   await withLocalPreview({ root, pages: pagesMode, migrate: referenceSite, readyPath: documentPath }, async (origin, store) => {
     await runAssertions(origin);
+    await testBodyLimit(origin, { referenceSite });
     if (referenceSite) {
       await testResourceExplorer(origin);
       await testContactIntake(origin, store);
+      await testTodoAdmission(origin, store);
     }
     console.log(`[test-worker-boundaries] ${pagesMode ? "Pages" : "Workers"}: rendering, assets, guards and WebSocket boundaries passed; ${referenceSite ? "reference D1 workflows passed" : "sample-domain checks excluded by the adopter profile"}`);
   });

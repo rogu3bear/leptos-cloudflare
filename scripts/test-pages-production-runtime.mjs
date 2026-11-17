@@ -8,6 +8,8 @@ import { preparePagesRelease, readBundleMetadata } from "./prepare-pages-release
 import { verifyReleaseFiles } from "./verify-pages-release.mjs";
 import { withLocalPreview, fetchBoundary } from "./local-preview.mjs";
 import { testResourceExplorer } from "./test-resource-explorer.mjs";
+import { testBodyLimit } from "./test-body-limit.mjs";
+import { testTodoAdmission } from "./test-todo-admission.mjs";
 import { testContactIntake } from "./test-contact-intake.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
@@ -43,9 +45,11 @@ try {
     assert.match(response.headers.get("content-security-policy"), /nonce-/);
     assert.equal((await fetchBoundary(`${origin}/_server/index_bg.wasm`)).status, 404);
     for (const path of ["/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) assert.equal((await fetchBoundary(`${origin}${path}`)).status, 404);
+    await testBodyLimit(origin, { referenceSite });
     if (referenceSite) {
       await testResourceExplorer(origin);
       await testContactIntake(origin, store);
+      await testTodoAdmission(origin, store);
     }
   });
   assert.deepEqual(await verifyReleaseFiles(output), manifest, "local qualification must not change release files");

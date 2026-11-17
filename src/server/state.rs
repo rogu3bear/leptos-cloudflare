@@ -8,14 +8,21 @@ pub struct AppState {
     pub leptos_options: LeptosOptions,
     pub env: Arc<worker::Env>,
     pub session_id: Arc<str>,
+    pub client_ip: Option<Arc<str>>,
 }
 
 impl AppState {
-    pub fn new(leptos_options: LeptosOptions, env: worker::Env, session_id: String) -> Self {
+    pub fn new(
+        leptos_options: LeptosOptions,
+        env: worker::Env,
+        session_id: String,
+        client_ip: Option<String>,
+    ) -> Self {
         Self {
             leptos_options,
             env: Arc::new(env),
             session_id: Arc::<str>::from(session_id),
+            client_ip: client_ip.map(Arc::<str>::from),
         }
     }
 

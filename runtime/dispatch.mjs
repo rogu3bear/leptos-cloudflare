@@ -80,7 +80,7 @@ export function withDispatch(LeptosWorker, { assetPaths = null, blockServerModul
     }
 
     // Keep Rust's request-body cancellation isolated from the native request.
-    // The API body limit remains in Rust; rejected bodies are never read.
+    // Rust rejects declared over-limit bodies early and caps streamed bytes before parsing.
     const leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;
     const boundary = requestBoundary(url.pathname);
     if (!this.ctx.tracing?.enterSpan) {

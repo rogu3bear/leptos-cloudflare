@@ -100,3 +100,8 @@ production/preview identities and the [production preparation/readback contract]
 Keep migration hashes, assertions, recovery and deployed schema proof intact.
 Follow [RELEASE.md](../RELEASE.md) for the full release procedure. Source, local
 runtime, publication, provider deployment and live acceptance remain distinct.
+
+Anonymous create operations use `write_context().await` and atomic conditional
+inserts. Raw client IPs are not stored; the keyed network digest is separate from
+session ownership. Do not delete the database-local key to clear a quota or let an
+anonymous write evict existing rows. Missing trusted network identity fails closed.
