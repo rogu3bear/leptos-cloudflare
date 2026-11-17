@@ -45,28 +45,15 @@ A governed failure never authorizes switching lanes.
 - Apply remote schema only through the repository-owned operation that binds the clean root/HEAD, pack and ordered migration blobs, derived-config hash/identity, a fresh pre-change recovery bookmark, Wrangler ledger, and closed post-schema proof. Stop if it is blocked.
 - Treat D1 creation, schema application, Worker deployment, provider configuration readback, and authenticated route/telemetry evidence as separate proof planes.
 
-Dependency audit notes (recheck the advisory database for each candidate):
+The v0.1.7 lockfile has two upstream maintenance warnings. Refresh the audit
+for every release candidate.
 
-- `cargo audit` reports zero known vulnerabilities.
-- `RUSTSEC-2026-0543` marks `chrono 0.4.44` unmaintained. The template
-  receives it through `worker 0.7.5`. The advisory lists no patched version.
-  Recheck when updating the Worker SDK.
-- `RUSTSEC-2024-0436` remains for transitive `paste 1.0.15` through
-  Leptos/Tachys (`either_of`, `reactive_graph`, and related view machinery).
-  RustSec classifies it as unmaintained and publishes no patched `paste`
-  release. It is a compile-time proc-macro dependency, not a reported runtime
-  vulnerability. Track the upstream Leptos/Tachys replacement and remove this
-  exception when that dependency disappears.
-- `RUSTSEC-2026-0173` remains for transitive `proc-macro-error2 2.0.1`
-  through `leptos_macro`, `leptos_router_macro`, `reactive_stores_macro`, and
-  `syn_derive`. RustSec classifies it as unmaintained and publishes no patched
-  release. It is also a compile-time proc-macro dependency. Track the upstream
-  macro crates rather than substituting a second local macro stack.
-- `cargo audit` reports yanked `spin 0.9.8` through
-  `multer 3.1.0 -> axum 0.8.9`. This is a registry-yank warning without a
-  RustSec vulnerability advisory or patched `0.9.x` lockfile candidate.
-  Continue tracking the current Axum/multer chain and remove the exception as
-  soon as upstream stops selecting this version.
+- `RUSTSEC-2026-0543` flags `chrono 0.4.44`, required by `worker 0.7.5`.
+  RustSec lists no patched version. Recheck when the Worker SDK changes its
+  date/time dependency.
+- `RUSTSEC-2024-0436` flags `paste 1.0.15`, used at compile time by Leptos,
+  Tachys and their reactive dependencies. RustSec lists no patched version.
+  Recheck when these crates replace the macro and it leaves the lockfile.
 
 Resolved in the 2026-08-10 candidate:
 

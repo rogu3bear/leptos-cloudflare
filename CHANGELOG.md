@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7
+
+- Update `spin` to 0.9.9 to clear the registry yank warning.
+- Update Leptos to 0.8.23 and the router macro to 0.8.7, removing
+  `proc-macro-error2` from the dependency graph. The two remaining upstream
+  maintenance warnings are documented in [RELEASE.md](RELEASE.md).
+
 ## 0.1.6
 
 - Validate todo titles before accessing D1 so a storage failure cannot mask an input error.

@@ -6,7 +6,7 @@
     {
       "path": "Cargo.lock",
       "kind": "generated-text",
-      "sha256": "241832b23bde236a6a5f0396f34137f2b8deae58aa558edb3c3172c2be0724e1",
+      "sha256": "e52f5d6dbb61fa373e9ce57fc047a530141938b1995666a98c6a6a09a23081ba",
       "owner": "Repository Cargo dependency owner",
       "reason": "Cargo-generated dependency resolution; hand edits or dependency removals solely for line count would change integrity or behavior",
       "review": "Every Cargo.lock regeneration or hash change"
