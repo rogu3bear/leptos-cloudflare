@@ -3,6 +3,7 @@
 import { access, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join } from "node:path";
+import { renameLock, renamedPolicy } from "./adoption-lock.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
 const ZERO = "00000000-0000-0000-0000-000000000000";
@@ -33,7 +34,7 @@ export async function adoptProject(root, name) {
   if (!NAME.test(name ?? "")) throw new Error("project name must be 1–60 lowercase letters, digits, or interior hyphens, starting with a letter");
   const { cargo, leptos } = await projectMetadata(root);
   const previous = cargo.package.name;
-  const files = { cargo: "Cargo.toml", lock: "Cargo.lock", worker: "wrangler.toml", migration: ".cfctl/operations/d1-migrations.toml", pages: "pages/wrangler.toml" };
+  const files = { cargo: "Cargo.toml", lock: "Cargo.lock", policy: "file-limits.json", worker: "wrangler.toml", migration: ".cfctl/operations/d1-migrations.toml", pages: "pages/wrangler.toml" };
   const originals = Object.fromEntries(await Promise.all(Object.entries(files).map(async ([key, file]) => [key, await readFile(join(root, file), "utf8")])));
   const wrangler = Bun.TOML.parse(originals.worker);
   const operation = Bun.TOML.parse(originals.migration).operation;
@@ -63,7 +64,8 @@ export async function adoptProject(root, name) {
   if (Bun.TOML.parse(next.cargo).package.metadata["leptos-cf"]["reference-site"] !== false) {
     throw new Error("adoption must select application verification before identity changes");
   }
-  next.lock = replaceOnce(next.lock, `[[package]]\nname = "${previous}"\n`, `[[package]]\nname = "${name}"\n`, "root lockfile package");
+  next.lock = renameLock(originals.lock, previous, name);
+  next.policy = renamedPolicy(originals.policy, originals.lock, next.lock);
   const renameDeployment = (source, label) => replaceOnce(
     replaceOnce(source, `name = "${previous}"`, `name = "${name}"`, `${label} name`),
     `database_name = "${previous}-db"`, `database_name = "${name}-db"`, `${label} D1 name`,
@@ -79,7 +81,8 @@ export async function adoptProject(root, name) {
     temporary: join(root, `${file}.adopt-${process.pid}.tmp`),
   }));
   for (const document of documents) {
-    Bun.TOML.parse(document.next);
+    if (document.file.endsWith(".json")) JSON.parse(document.next);
+    else Bun.TOML.parse(document.next);
     await access(document.file, constants.W_OK);
   }
   const installed = [];

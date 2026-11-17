@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9
+
+- Require the outgoing hydration bundle before qualifying upgrades and rollbacks.
+- Exercise a persisted application server-function mutation on Workers and Pages after adoption.
+- Preserve Cargo lockfile ordering and update its reviewed inventory digest during a rename.
+
 ## 0.1.8
 
 - Preserve verified, content-addressed client bundles across upgrades and rebuilt

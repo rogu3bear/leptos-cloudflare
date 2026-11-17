@@ -16,6 +16,10 @@ Use this checklist before tagging or announcing a public template release.
 
 Run the single local verification command:
 
+Before the full gate, set `LEPTOS_RELEASE_BASELINE` to the recorded outgoing
+bundle ID, or `first-release` for a new application’s initial release.
+
+
 ```bash
 ./scripts/verify.sh
 ```
@@ -94,16 +98,22 @@ per trusted application and environment. Only import
 public client artifacts from releases you intend to continue serving. A first
 build in an empty checkout cannot reconstruct earlier binaries from Git.
 
-To seed a previous release, point the capture command at its verified Workers
+For the first release only, export `LEPTOS_RELEASE_BASELINE=first-release`.
+For each upgrade or rollback, record the outgoing bundle ID alongside the
+outgoing release, independently of the history backup. To obtain the ID and
+seed history, point the capture command at the outgoing verified Workers
 site directory or its prepared Pages `public/` directory:
 
 ```sh
-bun scripts/hydration-history.mjs capture target/pages-release-previous/public
+export LEPTOS_HYDRATION_HISTORY=/path/to/restored-history
+bun scripts/hydration-history.mjs capture target/pages-release-previous/public > /path/to/outgoing-release/bundle-id
+# On the clean builder, use the ID recorded by the outgoing release.
+export LEPTOS_RELEASE_BASELINE="$(cat /path/to/outgoing-release/bundle-id)"
 ```
 
 For a rollback, rebuild the previous application and server with the retention
 tooling and the same history **including the outgoing release**. For a rollback
-to pre-0.1.8 application code, retain the 0.1.8 build scripts, browser tooling
+to earlier application code, retain the current build scripts, browser tooling
 and `EdgeHydrationScripts` bootstrap in `src/edge/shell.rs`. Its performance
 mark signals that the browser returned from `hydrate()`. Prepare and
 qualify that new rollback package before switching traffic. An unmodified
@@ -115,7 +125,9 @@ For new application functions, declare stable endpoint names and preserve
 their input and output contracts across releases.
 
 The full gate checks archived bytes over HTTP on Workers, Pages and the derived
-Pages directory. Pinned WebKit executes hydration on every profile. The reference
+Pages directory. The gate rejects a missing or corrupt outgoing bundle before
+building. Pinned WebKit executes hydration and the application mutation in
+`scripts/browser/application-check.cjs` on every profile. The reference
 application also exercises server-function responses, persistence, retry and
 session isolation. Install the browser with bootstrap or
 `node node_modules/playwright/cli.js install webkit` after a frozen Bun install.

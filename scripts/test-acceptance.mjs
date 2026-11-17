@@ -18,10 +18,10 @@ function success(result) {
 try {
   const fixture = join(temporary, "app");
   await mkdir(fixture);
-  for (const path of ["Cargo.toml", "Cargo.lock", "wrangler.toml", "pages", ".cfctl", "src", "scripts", "docs", "migrations"]) {
+  for (const path of ["Cargo.toml", "Cargo.lock", "file-limits.json", "wrangler.toml", "pages", ".cfctl", "src", "scripts", "docs", "migrations"]) {
     await cp(join(root, path), join(fixture, path), { recursive: true });
   }
-  const identityFiles = ["Cargo.toml", "Cargo.lock", "wrangler.toml", ".cfctl/operations/d1-migrations.toml", "pages/wrangler.toml"];
+  const identityFiles = ["Cargo.toml", "Cargo.lock", "wrangler.toml", ".cfctl/operations/d1-migrations.toml", "pages/wrangler.toml", "file-limits.json"];
   const snapshot = () => Promise.all(identityFiles.map((path) => readFile(join(fixture, path), "utf8")));
   const original = await snapshot();
   const oldName = Bun.TOML.parse(original[0]).package.name;
@@ -62,6 +62,11 @@ try {
   await assert.rejects(adoptProject(fixture, "sample-app"), /bound provider routing/);
   assert.deepEqual(await snapshot(), routed);
   await writeFile(join(fixture, "wrangler.toml"), original[2]);
+  await writeFile(join(fixture, "Cargo.lock"), original[1] + "\n");
+  const stale = await snapshot();
+  await assert.rejects(adoptProject(fixture, "sample-app"), /Review Cargo.lock/);
+  assert.deepEqual(await snapshot(), stale);
+  await writeFile(join(fixture, "Cargo.lock"), original[1]);
   const collision = join(fixture, `Cargo.lock.adopt-${process.pid}.tmp`);
   await writeFile(collision, "existing-file-must-survive");
   await assert.rejects(adoptProject(fixture, "sample-app"), /EEXIST/);
@@ -75,6 +80,9 @@ try {
   assert.deepEqual(await readFile(join(fixture, "src/components/home_page.rs")), homeBefore);
   for (const [name, bytes] of migrationsBefore) assert.equal(await readFile(join(fixture, "migrations", name), "utf8"), bytes);
   const after = await snapshot();
+  success(run(bun, ["scripts/adoption-lock.mjs"], { cwd: fixture }));
+  const names = Bun.TOML.parse(after[1]).package.map(pkg => pkg.name);
+  assert.deepEqual(names, [...names].sort(), "adoption preserves canonical Cargo package ordering");
   assert.equal(Bun.TOML.parse(after[0]).package.name, "sample-app");
   assert.equal(Bun.TOML.parse(after[0]).package.metadata.leptos["output-name"], "sample-app");
   assert.equal(Bun.TOML.parse(after[0]).package.metadata["leptos-cf"]["reference-site"], false);

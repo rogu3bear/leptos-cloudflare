@@ -107,5 +107,9 @@ session ownership. Do not delete the database-local key to clear a quota or let 
 anonymous write evict existing rows. Missing trusted network identity fails closed.
 
 The full gate runs WebKit against Workers, Pages and the derived Pages directory.
-Bootstrap installs the browser. Preserve the release-specific hydration history
+Bootstrap installs the browser.
+
+Before the full gate, set `LEPTOS_RELEASE_BASELINE` to the recorded outgoing
+bundle ID, or `first-release` for a new application’s initial release.
+ Preserve the release-specific hydration history
 when preparing an upgrade or rollback as described in [RELEASE.md](../RELEASE.md).

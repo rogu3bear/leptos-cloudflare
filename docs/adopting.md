@@ -24,7 +24,7 @@ process termination is not a multi-file filesystem transaction, so inspect Git
 and reconcile identity before retrying an interrupted invocation.
 
 A new name also sets `package.metadata.leptos-cf.reference-site = false`.
-This removes only field-guide wording assertions. SSR/hydration, Worker/Assets,
+This selects the application test profile. SSR/hydration, Worker/Assets,
 CSP, caching, 404 recovery, request guards, dependency audit, and build checks
 remain in `./scripts/verify.sh`. Set it true only when maintaining this reference
 site itself. Application-specific acceptance belongs to your application.
@@ -49,7 +49,10 @@ site itself. Application-specific acceptance belongs to your application.
    intake only; adoption does not introduce delivery, authentication, or billing.
 4. Run `./scripts/verify.sh`. Its Worker test uses the application's home page
    and output-name rather than requiring the field-guide architecture page or
-   branding. Add direct tests for the domain behavior you change.
+   branding. Both Workers and Pages run the mutation in
+   `scripts/browser/application-check.cjs` against disposable D1. When replacing
+   the sample, update that check to submit your own server function and verify
+   persisted state through the UI.
 5. Replace one sample workflow with your own typed command/query and UI. Remove
    old routes, API functions, components, and migration assertions only after
    their consumers are replaced. Keep deployed migrations append-only; never
@@ -88,11 +91,23 @@ The Workers config generator does not establish Pages identity. Provider
 migration, deployment, authenticated readback and live acceptance remain separate
 authorized operations; local qualification does not establish a deployed app.
 
-The build settles Cargo metadata before recording source provenance. Cargo may
-reorder the renamed package's lockfile entry; review and commit that generated
-change before claiming a clean release. Source changes during compilation still
+Adoption places the renamed package in Cargo order and updates its reviewed
+lockfile digest in `file-limits.json`. Commit those files together. An existing
+digest mismatch requires review before adoption. Source changes during compilation still
 fail the build. In a Disk Guard workspace, the heavy adoption test supports
 `--fixture <fresh-system-temp-path>` so the original operation parent can declare
 that exact `child_workspaces` entry before admission. Forward the genuine
 descriptors and supply `LEPTOS_ACCEPTANCE_BUILD_BUDGET_GB` from the caller's
 existing allowance; never clear inheritance or expand delegation in a child.
+
+For a cold-client transition check, capture the outgoing application's starting
+document from its built checkout. Use the route opened by your application
+mutation check. Set the resulting path during the incoming gate. WebKit then
+loads the outgoing HTML and its CSP while fetching assets and submitting
+mutations against each incoming local runtime.
+
+```sh
+bun scripts/capture-transition-document.mjs /path/to/outgoing-checkout /lab /tmp/outgoing-document.json
+export LEPTOS_TRANSITION_DOCUMENT=/tmp/outgoing-document.json
+./scripts/verify.sh
+```

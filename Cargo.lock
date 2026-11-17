@@ -928,7 +928,7 @@ dependencies = [
 
 [[package]]
 name = "leptos-cf"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "axum",
  "console_error_panic_hook",

@@ -13,6 +13,7 @@ echo "==> Verifying local release readiness"
 if ! command -v cargo-audit >/dev/null 2>&1; then
   ./scripts/security-audit.sh
 fi
+bun ./scripts/hydration-history.mjs check-baseline
 bun ./scripts/test-acceptance.mjs
 bun ./scripts/test-asset-fingerprints.mjs
 bun ./scripts/test-hydration-history.mjs
@@ -58,6 +59,7 @@ echo "==> 10/11 Wrangler deployment structure validation"
 ./scripts/wrangler.sh deploy --dry-run
 
 echo "==> 11/11 Repository hygiene"
+bun ./scripts/adoption-lock.mjs
 git diff --check
 
 echo ""

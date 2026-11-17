@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:f
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fingerprintAssets } from "./hash-assets.mjs";
-import { capturePrevious, saveBundle, restoreBundles } from "./hydration-history.mjs";
+import { requireBaseline, capturePrevious, saveBundle, restoreBundles } from "./hydration-history.mjs";
 
 const tmp = await mkdtemp(join(tmpdir(), "hydration-history-"));
 const history = join(tmp, "history");
@@ -45,6 +45,14 @@ try {
   const productionBefore = await readdir(productionHistory);
   await capturePrevious(old.root, productionHistory, app, true);
   assert.deepEqual(await readdir(productionHistory), productionBefore, "explicit production history must exclude same-name preview assets");
+  const oldId = ["js", "wasm", "css"].map(k => old.manifest.hashes[k]).join("-");
+  await requireBaseline(history, app, oldId);
+  await assert.rejects(requireBaseline(productionHistory, app, oldId), /Required outgoing/);
+  const empty = join(tmp, "empty");
+  await mkdir(empty);
+  await assert.rejects(requireBaseline(empty, app, oldId), /Required outgoing/);
+  await assert.rejects(requireBaseline(empty, app), /LEPTOS_RELEASE_BASELINE/);
+  await requireBaseline(empty, app, "first-release");
   const oldWasm = join(old.root, old.manifest.wasm.slice(1));
   await writeFile(oldWasm, "corrupt");
   await assert.rejects(saveBundle(old.root, history, app), /bytes changed/);

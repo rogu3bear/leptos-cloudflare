@@ -91,6 +91,11 @@ Follow [Workers deployment](docs/edge-deployment.md) or
 
 ## Change and verify
 
+Before the full gate, set `LEPTOS_RELEASE_BASELINE` to the recorded outgoing
+bundle ID, or `first-release` for a new application’s initial release.
+See [release switches](RELEASE.md#hydration-assets-during-release-switches).
+
+
 ```bash
 cargo check --features ssr       # focused server iteration
 cargo fmt --check

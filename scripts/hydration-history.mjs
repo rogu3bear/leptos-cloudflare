@@ -31,6 +31,16 @@ async function bundle(site, name) {
   return { manifest, files, id: kinds.map(k => manifest.hashes[k]).join("-") };
 }
 
+export async function requireBaseline(history, name, baseline) {
+  if (baseline === "first-release") return;
+  assert(typeof baseline === "string" && /^[a-f0-9]{16}(-[a-f0-9]{16}){2}$/.test(baseline),
+    "Set LEPTOS_RELEASE_BASELINE to the outgoing bundle ID, or first-release for an initial release");
+  const archived = await bundle(join(history, baseline), name).catch(error => {
+    throw new Error(`Required outgoing hydration bundle ${baseline} is missing or invalid: ${error.message}`);
+  });
+  assert.equal(archived.id, baseline, "Outgoing bundle identity mismatch");
+}
+
 export async function saveBundle(site, history, name) {
   const input = await bundle(site, name);
   await mkdir(history, { recursive: true });
@@ -50,6 +60,7 @@ export async function saveBundle(site, history, name) {
       for (const kind of kinds) assert(existing.files[kind].bytes.equals(input.files[kind].bytes), "Immutable asset collision");
     }
   } finally { await rm(tmp, { recursive: true, force: true }); }
+  return input.id;
 }
 
 export async function restoreBundles(site, history, name) {
@@ -98,11 +109,14 @@ if (import.meta.main) {
   if (base) assert((await lstat(base)).isDirectory(), "Restore the selected history directory before building");
   const history = join(resolve(base || "var/hydration-history"), name);
   const [mode, site, ...extra] = process.argv.slice(2);
-  assert(!extra.length && ((mode === "capture" && site) || (["capture-previous", "publish-assets"].includes(mode) && !site)),
-    "Usage: hydration-history.mjs capture <trusted-site> | publish-assets");
-  if (mode === "capture") await saveBundle(resolve(site), history, name);
+  assert(!extra.length && ((mode === "capture" && site) || (["check-baseline", "capture-previous", "publish-assets"].includes(mode) && !site)),
+    "Usage: hydration-history.mjs capture <trusted-site> | check-baseline | capture-previous | publish-assets");
+  if (mode === "check-baseline" || (process.env.LEPTOS_RELEASE_BASELINE && mode !== "capture")) {
+    await requireBaseline(history, name, process.env.LEPTOS_RELEASE_BASELINE);
+  }
+  if (mode === "capture") console.log(await saveBundle(resolve(site), history, name));
   else if (mode === "capture-previous") await capturePrevious(project.paths.site, history, name, Boolean(base));
-  else {
+  else if (mode === "publish-assets") {
     await saveBundle(project.paths.site, history, name);
     await restoreBundles(project.paths.site, history, name);
   }
