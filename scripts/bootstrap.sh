@@ -78,6 +78,7 @@ if ! command -v cargo-audit >/dev/null 2>&1; then
 fi
 
 bun install --frozen-lockfile
+node node_modules/playwright/cli.js install webkit
 
 log "Checking Wrangler $EXPECTED_WRANGLER_VERSION through the local launcher."
 wrangler_cmd --version >/dev/null

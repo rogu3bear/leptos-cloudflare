@@ -77,6 +77,41 @@ Resolved in the 2026-08-10 candidate:
 - `/lab` resource output remains inside a Suspense boundary and its create, toggle, detail, and delete flow passes in a real browser.
 - Shared realtime state remains outside the core runtime until adopted through `patterns/realtime-durable-object/`.
 
+## Hydration assets during release switches
+
+A document can finish fetching its JS, WASM and CSS after the active server
+changes. Each edge build archives its current hashed bundle and restores all
+complete bundles for this application to the public `pkg/` directory. The active
+manifest still names only the current build. Workers Assets and the Pages upload
+both serve the retained bytes.
+
+The default archive is `var/hydration-history/<output-name>/`. Back up the
+history outside the checkout for clean builders. Set `LEPTOS_HYDRATION_HISTORY`
+to the restored parent directory before running the normal build and full gate.
+Keep separate directories per trusted application and environment. Only import
+public client artifacts from releases you intend to continue serving. A first
+build in an empty checkout cannot reconstruct earlier binaries from Git.
+
+To seed a previous release, point the capture command at its verified Workers
+site directory or its prepared Pages `public/` directory:
+
+```sh
+bun scripts/hydration-history.mjs capture target/pages-release-previous/public
+```
+
+For a rollback, rebuild the previous application and server with the retention
+tooling and the same history **including the outgoing release**. Prepare and
+qualify that new rollback package before switching traffic. An unmodified
+historical deployment cannot contain assets first published after it was built.
+Keep compatible server-function endpoints available for clients that remain
+open across the switch. Asset retention alone cannot preserve a removed API.
+
+The full gate checks archived bytes over HTTP on Workers, Pages and the derived
+Pages directory. Pinned WebKit executes hydration on every profile. The reference
+application also exercises server-function responses, persistence, retry and
+session isolation. Install the browser with bootstrap or
+`node node_modules/playwright/cli.js install webkit` after a frozen Bun install.
+
 ## Adoption Contract
 
 - `scripts/test-acceptance.mjs` verifies safe local identity adoption, preserved

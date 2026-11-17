@@ -11,6 +11,7 @@ import { testResourceExplorer } from "./test-resource-explorer.mjs";
 import { testBodyLimit } from "./test-body-limit.mjs";
 import { testTodoAdmission } from "./test-todo-admission.mjs";
 import { testContactIntake } from "./test-contact-intake.mjs";
+import { qualifyBrowser } from "./test-browser.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
 const root = process.cwd();
@@ -52,6 +53,7 @@ try {
       await testTodoAdmission(origin, store);
     }
   });
+  await qualifyBrowser("pages", output);
   assert.deepEqual(await verifyReleaseFiles(output), manifest, "local qualification must not change release files");
   console.log(`[pages-production] isolated standard config, both native upload bundles, local migrations, SSR/CSP and private modules passed; ${referenceSite ? "reference D1 workflows passed" : "sample-domain checks excluded by the adopter profile"}; no provider operation executed`);
 } finally {

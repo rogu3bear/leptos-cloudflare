@@ -2,6 +2,7 @@
   "name": "leptos-cf-tooling",
   "private": true,
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "wrangler": "4.120.1"
   }
 }

@@ -40,7 +40,7 @@ fn EdgeHydrationScripts(options: LeptosOptions) -> impl IntoView {
     let wasm_href = asset_href(&options, "wasm", crate::asset_hashes::WASM_HASH);
     let nonce = leptos::nonce::use_nonce();
     let hydration_script = format!(
-        "import({js_href:?}).then(mod => {{ mod.default({{ module_or_path: {wasm_href:?} }}).then(() => {{ mod.hydrate(); }}); }});"
+        "import({js_href:?}).then(mod => {{ mod.default({{ module_or_path: {wasm_href:?} }}).then(() => {{ mod.hydrate(); performance.mark('leptos:hydrated'); }}); }});"
     );
 
     view! {

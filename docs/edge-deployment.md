@@ -711,3 +711,7 @@ association with old rows; coordinate it as an operator-controlled data change.
 Pre-migration records keep an empty admission key: they count toward global and
 existing session quotas, but historical IP budgets cannot be reconstructed.
 Migration preserves their contents and ownership. Do not backfill guessed IPs.
+
+Before an upgrade or rollback, restore the application’s hydration history and
+qualify the rebuilt release with its retained client assets. See the
+[hydration release procedure](../RELEASE.md#hydration-assets-during-release-switches).

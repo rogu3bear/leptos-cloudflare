@@ -98,10 +98,14 @@ cargo fmt --check
 ```
 
 The full gate checks adoption/configuration contracts, formatting, Rust tests,
-dependency audit, both WASM builds, asset integrity, Workers and Pages runtime
+dependency audit, both WASM builds, asset integrity, WebKit hydration and server-function
+checks, Workers and Pages runtime
 boundaries, the derived Pages release directory and a deployment dry run.
 It performs no live deployment. Missing mandatory tools fail visibly. Current
 dependency warnings are documented in [RELEASE.md](RELEASE.md).
+Bootstrap installs the pinned Playwright WebKit browser. Keep the application’s
+hydration history with its release artifacts across builds and rollbacks. See
+[release preparation](RELEASE.md#hydration-assets-during-release-switches).
 Remote CI is intentionally absent.
 
 | Change | Start here |

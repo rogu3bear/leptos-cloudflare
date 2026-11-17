@@ -154,3 +154,7 @@ hash and schema assertions. The database-local key is initialized on first write
 per-IP quotas survive cookie changes, NAT users share a budget, and full storage
 rejects new writes without eviction. Follow the [admission prerequisite](edge-deployment.md#anonymous-admission-prerequisite)
 for trusted-header, privacy and key-rotation limits. No remote migration is implied.
+
+Before an upgrade or rollback, restore the application’s hydration history and
+qualify the rebuilt release with its retained client assets. See the
+[hydration release procedure](../RELEASE.md#hydration-assets-during-release-switches).

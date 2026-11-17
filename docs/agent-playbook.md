@@ -105,3 +105,7 @@ Anonymous create operations use `write_context().await` and atomic conditional
 inserts. Raw client IPs are not stored; the keyed network digest is separate from
 session ownership. Do not delete the database-local key to clear a quota or let an
 anonymous write evict existing rows. Missing trusted network identity fails closed.
+
+The full gate runs WebKit against Workers, Pages and the derived Pages directory.
+Bootstrap installs the browser. Preserve the release-specific hydration history
+when preparing an upgrade or rollback as described in [RELEASE.md](../RELEASE.md).

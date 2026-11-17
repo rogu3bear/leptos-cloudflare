@@ -15,6 +15,7 @@ if ! command -v cargo-audit >/dev/null 2>&1; then
 fi
 bun ./scripts/test-acceptance.mjs
 bun ./scripts/test-asset-fingerprints.mjs
+bun ./scripts/test-hydration-history.mjs
 bun ./scripts/test-pages-package.mjs
 bun ./scripts/test-dispatch.mjs
 bun ./scripts/test-pattern-links.mjs
@@ -50,6 +51,8 @@ echo "==> 9/11 Local Worker rendering and network boundaries"
 bun ./scripts/test-worker-boundaries.mjs
 LEPTOS_TEST_PAGES=1 bun ./scripts/test-worker-boundaries.mjs
 bun ./scripts/test-pages-production-runtime.mjs
+bun ./scripts/test-browser.mjs workers
+bun ./scripts/test-browser.mjs pages
 
 echo "==> 10/11 Wrangler deployment structure validation"
 ./scripts/wrangler.sh deploy --dry-run

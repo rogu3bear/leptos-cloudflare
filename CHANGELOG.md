@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.8
+
+- Preserve verified, content-addressed client bundles across upgrades and rebuilt
+  rollback releases for Workers and Pages.
+- Run tracked WebKit hydration and server-function checks in the local release
+  gate, including the mutation response behind the optimistic todo control.
+
 ## 0.1.7
 
 - Update `spin` to 0.9.9 to clear the registry yank warning.

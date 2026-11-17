@@ -29,8 +29,10 @@ fi
 # Settle Cargo's lockfile ordering after local name adoption before freezing inputs.
 cargo metadata --format-version 1 > /dev/null
 bun ./scripts/build-provenance.mjs start
+bun ./scripts/hydration-history.mjs capture-previous
 ./scripts/with-wasm-bindgen-cli.sh cargo leptos build --release
 bun ./scripts/hash-assets.mjs
+bun ./scripts/hydration-history.mjs publish-assets
 source "$ROOT_DIR/target/asset-hashes.env"
 ./scripts/with-wasm-bindgen-cli.sh worker-build --release --features ssr
 bun ./scripts/write-worker-shim.mjs
