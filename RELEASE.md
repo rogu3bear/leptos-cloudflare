@@ -88,7 +88,9 @@ both serve the retained bytes.
 The default archive is `var/hydration-history/<output-name>/`. Back up the
 history outside the checkout for clean builders. Set `LEPTOS_HYDRATION_HISTORY`
 to the restored parent directory before running the normal build and full gate.
-Keep separate directories per trusted application and environment. Only import
+When a history directory is explicitly selected, the build imports earlier
+assets only from that history or an explicit capture. Keep separate directories
+per trusted application and environment. Only import
 public client artifacts from releases you intend to continue serving. A first
 build in an empty checkout cannot reconstruct earlier binaries from Git.
 
@@ -100,7 +102,10 @@ bun scripts/hydration-history.mjs capture target/pages-release-previous/public
 ```
 
 For a rollback, rebuild the previous application and server with the retention
-tooling and the same history **including the outgoing release**. Prepare and
+tooling and the same history **including the outgoing release**. For a rollback
+to pre-0.1.8 application code, retain the 0.1.8 build scripts, browser tooling
+and `EdgeHydrationScripts` bootstrap in `src/edge/shell.rs`. Its performance
+mark signals that the browser returned from `hydrate()`. Prepare and
 qualify that new rollback package before switching traffic. An unmodified
 historical deployment cannot contain assets first published after it was built.
 Keep compatible server-function endpoints available for clients that remain

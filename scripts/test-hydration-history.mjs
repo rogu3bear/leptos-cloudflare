@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fingerprintAssets } from "./hash-assets.mjs";
-import { saveBundle, restoreBundles } from "./hydration-history.mjs";
+import { capturePrevious, saveBundle, restoreBundles } from "./hydration-history.mjs";
 
 const tmp = await mkdtemp(join(tmpdir(), "hydration-history-"));
 const history = join(tmp, "history");
@@ -40,11 +40,18 @@ try {
       assert.deepEqual(await readFile(join(active.root, path)), await readFile(join(peer.root, path)));
     }
   }
+  const productionHistory = join(tmp, "prod");
+  await saveBundle(next.root, productionHistory, app);
+  const productionBefore = await readdir(productionHistory);
+  await capturePrevious(old.root, productionHistory, app, true);
+  assert.deepEqual(await readdir(productionHistory), productionBefore, "explicit production history must exclude same-name preview assets");
   const oldWasm = join(old.root, old.manifest.wasm.slice(1));
   await writeFile(oldWasm, "corrupt");
   await assert.rejects(saveBundle(old.root, history, app), /bytes changed/);
   await assert.rejects(restoreBundles(old.root, history, app), /collision/);
   await rename(oldWasm, oldWasm + ".saved");
+  await capturePrevious(old.root, history, app, false);
+  await assert.rejects(capturePrevious(old.root, productionHistory, app, false), /ENOENT/);
   await restoreBundles(old.root, history, app);
   await assert.rejects(saveBundle(old.root, history, "other"));
   console.log("[hydration-history] forward and rollback bundles, concurrent capture, integrity and isolation passed");

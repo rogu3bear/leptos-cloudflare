@@ -14,6 +14,7 @@ async function regular(path) {
 }
 
 async function bundle(site, name) {
+  assert((await lstat(site)).isDirectory(), "Expected regular bundle directory");
   assert((await lstat(join(site, "pkg"))).isDirectory(), "Expected regular pkg directory");
   const manifest = JSON.parse(await regular(join(site, "asset-manifest.json")));
   const files = {};
@@ -69,6 +70,27 @@ export async function restoreBundles(site, history, name) {
   }
 }
 
+export async function capturePrevious(site, history, name, explicitHistory) {
+  // Explicit histories can share a build target across environments.
+  // Only an explicit capture may import another build into that history.
+  if (explicitHistory) return;
+  let manifest;
+  try { manifest = JSON.parse(await regular(join(site, "asset-manifest.json"))); }
+  catch (error) { if (error.code === "ENOENT") return; throw error; }
+  if (!manifest.js.startsWith(`/pkg/${name}.`)) return;
+  try { await saveBundle(site, history, name); }
+  catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    // Cargo may have cleared pkg before a previous build was interrupted.
+    const hashes = kinds.map(k => manifest.hashes[k]);
+    assert(hashes.every(h => /^[a-f0-9]{16}$/.test(h)), "Invalid previous manifest");
+    const id = hashes.join("-");
+    const archived = await bundle(join(history, id), name);
+    assert.equal(archived.id, id);
+    for (const kind of kinds) assert.equal(manifest[kind], archived.manifest[kind]);
+  }
+}
+
 if (import.meta.main) {
   const project = await projectMetadata();
   const name = project.leptos["output-name"];
@@ -79,13 +101,7 @@ if (import.meta.main) {
   assert(!extra.length && ((mode === "capture" && site) || (["capture-previous", "publish-assets"].includes(mode) && !site)),
     "Usage: hydration-history.mjs capture <trusted-site> | publish-assets");
   if (mode === "capture") await saveBundle(resolve(site), history, name);
-  else if (mode === "capture-previous") {
-    let manifest;
-    try { manifest = JSON.parse(await regular(project.paths.manifest)); }
-    catch (error) { if (error.code !== "ENOENT") throw error; }
-    // Target directories may be reused after adopting a different application name.
-    if (manifest?.js?.startsWith(`/pkg/${name}.`)) await saveBundle(project.paths.site, history, name);
-  }
+  else if (mode === "capture-previous") await capturePrevious(project.paths.site, history, name, Boolean(base));
   else {
     await saveBundle(project.paths.site, history, name);
     await restoreBundles(project.paths.site, history, name);
