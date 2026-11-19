@@ -28,23 +28,28 @@ The tradeoff: you're constrained to what runs in a Worker — CPU limits, memory
 
 ### How the Worker Entrypoint Works
 
-The Worker entrypoint is in `src/lib.rs`. It's a standard Rust function marked with `#[worker::event(fetch)]`:
+The Worker entrypoint is in `src/lib.rs`. It's a standard Rust function marked with `#[worker::event(fetch)]` from [workers-rs](https://github.com/cloudflare/workers-rs):
 
 ```rust
 #[worker::event(fetch)]
 async fn fetch(
-    req: worker::HttpRequest,
+    req: worker::Request,
     env: worker::Env,
-    _ctx: worker::Context,
-) -> worker::Result<axum::http::Response<axum::body::Body>> {
-    // ...
-    let state = server::AppState::new(leptos_options.clone(), env);
-    let mut router = Router::new()
-        .leptos_routes_with_context(/* ... */)
-        .with_state(state);
-
-    Ok(router.call(req).await?)
+    ctx: worker::Context,
+) -> worker::Result<worker::web_sys::Response> {
+    edge::dispatch(req, env, ctx).await
 }
+```
+
+It is the first code to run for a request. The generated `build/_worker.js` handles nothing: it publishes build-generated routing data and re-exports this module. `edge::dispatch` (`src/edge/entry.rs`) answers the WebSocket lane and asset fallbacks, then hands application requests to the handler in `src/edge/mod.rs`, which builds the router:
+
+```rust
+let state = crate::server::AppState::new(leptos_options.clone(), env, session_id, client_ip);
+let mut router = Router::new()
+    .leptos_routes_with_context(/* ... */)
+    .with_state(state);
+
+let mut response = router.call(req).await?;
 ```
 
 This function is called once per HTTP request. The `env` parameter carries all bindings (D1, R2, KV, etc.) configured in `wrangler.toml`. `AppState` wraps `env` in an `Arc` and makes it available to Leptos server functions via the context system.
@@ -176,7 +181,7 @@ The composite indexes on `(session_id, completed, id DESC)` and `(session_id, cr
 
 The core template does not bind a Durable Object. `/realtime/socket` stays a minimal WebSocket capability lane until the application needs shared state.
 
-When adopting the shared realtime pattern, add the Durable Object class export to the generated Worker shim source (`scripts/write-worker-shim.mjs`) and add a binding/migration like:
+When adopting the shared realtime pattern, define the Durable Object with `#[durable_object]` in `src/edge/realtime.rs` (the generated entry re-exports it without a build-script change) and add a binding/migration like:
 
 ```toml
 [[durable_objects.bindings]]
@@ -484,7 +489,7 @@ If the handler returns an error or a message is not acknowledged, Cloudflare ret
 
 Durable Objects provide a single-instance guarantee: for a given ID, exactly one Durable Object instance is active anywhere in the world at a time. That instance has its own transactional key-value storage and can hold WebSocket connections.
 
-The starter's generated `_worker.js` reserves `/realtime/socket` as the template WebSocket capability endpoint. Treat that endpoint as proof of routing and upgrade handling, not as a production room server. Once multiple clients need shared state, route the upgrade to a Durable Object keyed by room, document, tenant, or another coordination ID.
+The starter's Worker entry reserves `/realtime/socket` as the template WebSocket capability endpoint. Treat that endpoint as proof of routing and upgrade handling, not as a production room server. Once multiple clients need shared state, route the upgrade to a Durable Object keyed by room, document, tenant, or another coordination ID.
 
 ### When to Use Durable Objects
 
@@ -514,7 +519,7 @@ tag = "v1"
 new_classes = ["RateLimiter"]
 ```
 
-The Rust implementation uses `#[durable_object]` from the `worker` crate.
+The Rust implementation uses `#[durable_object]` from the `worker` crate; `patterns/realtime-durable-object/realtime.example.rs` is a complete example.
 
 ### Cost
 
@@ -653,11 +658,11 @@ No free tier. Requires Workers Paid plan.
 
 ## Deployment
 
-The public route tree is `/`, `/start`, `/architecture`, `/patterns`, `/lab`, `/about`, and `/contact`, with `/lab/:id` as the dynamic specimen. Workers Static Assets serves exact `/pkg/*` and identity-file matches before user Worker code. Requests without an asset match reach the generated Worker shim and fall through to Leptos SSR, except for the dedicated `/realtime/socket` capability route.
+The public route tree is `/`, `/start`, `/architecture`, `/patterns`, `/lab`, `/about`, and `/contact`, with `/lab/:id` as the dynamic specimen. Workers Static Assets serves exact `/pkg/*` and identity-file matches before user Worker code. Requests without an asset match reach the Rust Worker entry and fall through to Leptos SSR, except for the dedicated `/realtime/socket` capability route.
 
 Workers is the default deployment. The separate Pages option below packages the same handler in advanced mode and has its own project, bindings and release proof.
 
-The production configuration samples 10% of invocation logs and 1% of traces. The Worker shim creates a custom span for only the closed `ssr`/`server_function` boundary after static-asset and WebSocket exits. Rust emits one versioned completion record with only closed route/function, method, outcome, status, and duration dimensions; raw paths/queries, identifiers, headers/cookies, bodies, IP/user-agent values, D1 identifiers, and internal error text are forbidden. Sampling makes provider telemetry useful without treating every request as a required retained event. Configuration is only source intent; confirm deployed settings and representative signals through readback after an authorized apply.
+The production configuration samples 10% of invocation logs and 1% of traces. The Worker entry creates a custom span for only the closed `ssr`/`server_function` boundary after static-asset and WebSocket exits. Rust emits one versioned completion record with only closed route/function, method, outcome, status, and duration dimensions; raw paths/queries, identifiers, headers/cookies, bodies, IP/user-agent values, D1 identifiers, and internal error text are forbidden. Sampling makes provider telemetry useful without treating every request as a required retained event. Configuration is only source intent; confirm deployed settings and representative signals through readback after an authorized apply.
 
 ```sh
 # Deploy to production
@@ -682,7 +687,7 @@ For a cfctl-governed account, the commands above are explanatory only. Productio
 
 The source passes local Workers and Pages runtime qualification, isolated production/preview configuration and native upload compilation. This is local release preparation; provider execution and live runtime acceptance remain separate. See [Pages production qualification](pages-production.md).
 
-Pages [advanced mode](https://developers.cloudflare.com/pages/functions/advanced-mode/) runs the packaged module worker for all requests and provides `ASSETS`. The output uses a single `_worker.js` so the pinned Wrangler module collector handles the server WASM. The packaging script copies the generated shim and its module graph plus `target/site`; it does not alter the Workers build. It rejects `_routes.json`, so Pages sends all requests to the handler, which denies private module paths and decoded traversal aliases. Server modules live under the reserved `functions/` directory, which the pinned Wrangler excludes from static asset upload while bundling it into the advanced Worker. Do not add route exclusions that bypass that protection. `_headers` supplies the existing static cache policy. The template exposes only `/realtime/socket` as a capability check; shared state still needs a separately owned Durable Object.
+Pages [advanced mode](https://developers.cloudflare.com/pages/functions/advanced-mode/) runs the packaged module worker for all requests and provides `ASSETS`. The output uses a single `_worker.js` so the pinned Wrangler module collector handles the server WASM. The packaging script writes the Pages entry with its asset inventory and copies the workers-rs module graph plus `target/site`; it does not alter the Workers build. It rejects `_routes.json`, so Pages sends all requests to the handler, which denies private module paths and decoded traversal aliases. Server modules live under the reserved `functions/` directory, which the pinned Wrangler excludes from static asset upload while bundling it into the advanced Worker. Do not add route exclusions that bypass that protection. `_headers` supplies the existing static cache policy. The template exposes only `/realtime/socket` as a capability check; shared state still needs a separately owned Durable Object.
 
 Run the Pages local commands in the README. Keep `pages/wrangler.toml` placeholder-only. `scripts/prepare-pages-release.mjs` derives a private, ignored standard-config directory with separate production/preview D1, copied migrations and both compiled upload bundles. Run the release verifier before submitting it to the owning provider lane. Pages deployment discovers its config from that directory; do not add an arbitrary `--config` deployment argument. The local gate exercises this exact derived configuration and disposable D1 without a provider write.
 

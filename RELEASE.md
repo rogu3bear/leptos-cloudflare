@@ -59,9 +59,9 @@ Refresh the audit for every release candidate.
 ## Runtime Contract
 
 - `wrangler.toml` points to `build/_worker.js`.
-- The Workers Static Assets router owns exact asset matches before user Worker code; `scripts/write-worker-shim.mjs` preserves WebSocket, explicit asset-fallback, and SSR dispatch when the Worker is invoked.
-- `scripts/verify-worker-runtime.mjs` checks the Worker shim, current compatibility date, sampled observability, Assets binding, WebSocket lane, and SSR fallback.
-- The Worker shim emits only closed `ssr`/`server_function` custom-span dimensions after Assets/WebSocket exits; Rust emits one versioned completion record with an allowlisted schema and no raw request, identity, body, D1, or internal-error material.
+- The Workers Static Assets router owns exact asset matches before user Worker code. When the Worker is invoked, the workers-rs `fetch` handler (`src/lib.rs`, `src/edge/`) is the first code to run and owns WebSocket, explicit asset-fallback, and SSR routing. `scripts/write-worker-shim.mjs` generates an entry that only re-exports that module and publishes build-generated routing data.
+- `scripts/verify-worker-runtime.mjs` checks that the generated entry is exactly the generator's output for the build, plus the current compatibility date, sampled observability, and Assets binding. Routing is proven by the Rust unit tests in `src/edge/route/tests.rs` and by the local runtime boundary tests.
+- The Worker entry emits only closed `ssr`/`server_function` custom-span dimensions after Assets/WebSocket exits; Rust emits one versioned completion record with an allowlisted schema and no raw request, identity, body, D1, or internal-error material.
 - `scripts/verify-architecture-contract.mjs` keeps the public SSR/CSR and Workers/Pages decisions aligned with the checked-in runtime.
 - `scripts/test-worker-boundaries.mjs` boots the exact release artifacts in local Wrangler and proves useful initial SSR HTML, CSP/hydration nonce agreement, static asset separation, rendered 404 status, API rejection, and the realtime upgrade boundary.
 - `scripts/verify-hashed-assets.mjs` checks immutable hashed assets and no-store manifest behavior.
@@ -108,7 +108,7 @@ mark signals that the browser returned from `hydrate()`. Prepare and
 qualify that new rollback package before switching traffic. An unmodified
 historical deployment cannot contain assets first published after it was built.
 Leptos includes the build directory in generated server-function paths. The
-Workers and Pages shims forward the six template functions’ exact retained
+Worker entry forwards, on Workers and Pages, the six template functions’ exact retained
 client paths to their matching active paths, preserving the request guards.
 For new application functions, declare stable endpoint names and preserve
 their input and output contracts across releases.

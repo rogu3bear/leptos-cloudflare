@@ -12,7 +12,7 @@ The release build compiles the shared application for two runtimes: browser WASM
 
 ```text
 scripts/build-edge.sh
-  ├── cargo leptos build --release
+  ├── cargo leptos build --release --frontend-only
   │     └── lib target (--features hydrate) → browser WASM + JS glue + CSS/assets
   ├── hash-assets.mjs                      → immutable names + asset-manifest.json
   ├── worker-build --release --features ssr
@@ -34,7 +34,8 @@ lib-features = ["hydrate"]
 lib-default-features = false
 ```
 
-The lib (`crate-type = ["cdylib", "rlib"]`) becomes the browser bundle under `target/site/pkg`. `worker-build` performs the deployable server build with the `ssr` feature and writes the Workers module bundle under `build/`. `scripts/write-worker-shim.mjs` then generates the configured entrypoint, `build/_worker.js`. Wrangler deploys that entrypoint and the `target/site` asset directory together; it does not deploy the ordinary Cargo bin output directly.
+The lib (`crate-type = ["cdylib", "rlib"]`) becomes the browser bundle under `target/site/pkg`. The edge build skips the
+unused native release executable. `worker-build` performs the deployable server build with the `ssr` feature and writes the Workers module bundle under `build/`. `scripts/write-worker-shim.mjs` then generates the configured entrypoint, `build/_worker.js`. Wrangler deploys that entrypoint and the `target/site` asset directory together; it does not deploy the ordinary Cargo bin output directly.
 
 The consequence: your components are Rust, your routing is Rust, your data types are Rust. There is no template language, no serialization boundary to manually maintain between server and client code, and no JavaScript framework sitting between your logic and the DOM.
 
@@ -46,7 +47,7 @@ The consequence: your components are Rust, your routing is Rust, your data types
 
 When a request arrives at the Worker, Leptos renders your `App` component to HTML on the server. The response is a complete HTML document — the browser can paint it immediately without waiting for WASM to load.
 
-The Worker event in `src/lib.rs` records request completion and delegates to `src/edge/mod.rs`. The edge handler applies method/origin/content-type/body checks, creates session/nonce context, and mounts the application routes through `leptos_routes_with_context`. The document owner in `src/edge/shell.rs` returns the full HTML shell and its fingerprinted hydration assets. Keeping this wiring out of `src/app.rs` lets a page-route change stay with the application.
+The Worker event in `src/lib.rs` hands every request to `src/edge/entry.rs`. The entry answers the WebSocket lane and asset fallbacks itself, records request completion for application requests and passes them to `src/edge/mod.rs`. That handler applies method/origin/content-type/body checks, creates session/nonce context, and mounts the application routes through `leptos_routes_with_context`. The document owner in `src/edge/shell.rs` returns the full HTML shell and its fingerprinted hydration assets. Keeping this wiring out of `src/app.rs` lets a page-route change stay with the application.
 
 ### Hydrated Client Rendering
 
@@ -226,8 +227,8 @@ A practical consequence: the `server` module (`src/server/`) is never referenced
 ### First Visit
 
 1. The browser sends `GET /` to the Cloudflare edge.
-2. Workers Static Assets checks `target/site`. `/` is not an exact asset, so the request continues to the configured Worker entrypoint, `build/_worker.js`.
-3. The generated shim checks the WebSocket capability route and explicit asset fallback paths, then delegates the document request to the Rust Worker bundle.
+2. Workers Static Assets checks `target/site`. `/` is not an exact asset, so the request continues to the configured Worker entrypoint, `build/_worker.js`, which re-exports the Rust Worker module.
+3. The Rust entry (`src/edge/entry.rs`) checks the WebSocket capability route and explicit asset fallback paths, then passes the document request to the application handler.
 4. The Worker handler applies request guards, creates the cookie-scoped identity and per-response CSP nonce, then calls the Axum router.
 5. Leptos matches `/` to `HomePage` inside `AppLayout` and streams a complete HTML document. A first visit to `/lab` follows the same path and can execute its D1-backed `Resource` in the server bundle without a browser-to-API round trip.
 6. The browser can paint the useful route HTML immediately.
@@ -303,6 +304,7 @@ The reactivity system works identically on server and client. On the server, Lep
 |------|-----------|
 | `src/lib.rs` | Worker `fetch` entry point (ssr) and `hydrate()` entry point (hydrate) |
 | `src/app.rs` | Root `App`, field-guide router, and wildcard |
+| `src/edge/entry.rs`, `src/edge/route.rs` | First request handler and its routing decisions: WebSocket lane, asset fallback, Pages private modules and retained server-function URLs |
 | `src/edge/` | HTTP policy, session identity, response headers, router wiring and SSR document shell |
 | `src/api.rs` | Domain-type reexports and stable `#[server]` function declarations |
 | `src/components/home_page.rs` | Public request-path field guide at `/` |
@@ -315,6 +317,6 @@ The reactivity system works identically on server and client. On the server, Lep
 | `src/server/todos.rs` | D1 query implementations for list/create/toggle/delete |
 | `src/server/mod.rs` | Re-exports and the `server_error` helper |
 | `Cargo.toml` | Feature declarations and `[package.metadata.leptos]` build config |
-| `scripts/build-edge.sh` | Ordered browser build, asset hashing, Worker build, shim generation, and runtime verification |
-| `scripts/write-worker-shim.mjs` | Generates the WebSocket/asset/SSR dispatch layer at `build/_worker.js` |
+| `scripts/build-edge.sh` | Ordered browser build, asset hashing, Worker build, entry generation, and runtime verification |
+| `scripts/write-worker-shim.mjs` | Generates `build/_worker.js`: build-generated routing data and a re-export of the workers-rs module |
 | `wrangler.toml` | Worker entrypoint, Workers Static Assets, D1, compatibility date, and observability |

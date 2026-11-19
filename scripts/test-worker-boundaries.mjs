@@ -6,11 +6,13 @@ import { testResourceExplorer } from "./test-resource-explorer.mjs";
 import { testBodyLimit } from "./test-body-limit.mjs";
 import { testTodoAdmission } from "./test-todo-admission.mjs";
 import { testContactIntake } from "./test-contact-intake.mjs";
+import { testLegacyAlias } from "./test-legacy-alias.mjs";
+import { testHandlerProbe } from "./test-handler-probe.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
 const root = process.cwd();
 const pagesMode = process.env.LEPTOS_TEST_PAGES === "1";
-const { leptos, referenceSite } = await projectMetadata(root);
+const { leptos, paths, referenceSite } = await projectMetadata(root);
 const documentPath = process.env.LEPTOS_BOUNDARY_DOCUMENT_PATH ?? (referenceSite ? "/architecture" : "/");
 if (!documentPath.startsWith("/") || documentPath.startsWith("//")) throw new Error("boundary document path must be local");
 
@@ -18,6 +20,25 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+// Response status line and headers exactly as sent, before any client filtering.
+function rawHead(origin, requestLine, headers) {
+  return new Promise((resolveHead, rejectHead) => {
+    const address = new URL(origin);
+    const connection = createConnection({ host: address.hostname, port: Number(address.port) });
+    let received = "";
+    connection.setTimeout(5_000, () => connection.destroy(new Error(`${requestLine} timed out`)));
+    connection.on("connect", () => connection.write([requestLine, `Host: ${address.host}`, ...headers, "", ""].join("\r\n")));
+    connection.on("data", (data) => {
+      received += data.toString("latin1");
+      const end = received.indexOf("\r\n\r\n");
+      if (end === -1) return;
+      connection.destroy();
+      resolveHead(received.slice(0, end + 2));
+    });
+    connection.once("error", rejectHead);
+  });
 }
 
 async function runAssertions(origin) {
@@ -80,6 +101,18 @@ async function runAssertions(origin) {
     !assetResponse.headers.has("content-security-policy"),
     "static asset unexpectedly received the dynamic SSR header set",
   );
+  const assetTag = assetResponse.headers.get("etag");
+  assert(assetTag, "hashed client JS has no validator");
+  const revalidated = await fetchBoundary(`${origin}${manifest.js}`, { headers: { "if-none-match": assetTag } });
+  assert(revalidated.status === 304, `conditional asset request returned ${revalidated.status}`);
+  assert(!revalidated.headers.has("content-security-policy") && !revalidated.headers.has("set-cookie"), "revalidated asset left the static lane");
+
+  const missingAsset = await fetchBoundary(`${origin}${manifest.js.replace(/\.[a-f0-9]{16}\.js$/, ".0000000000000000.js")}`);
+  assert(missingAsset.status === 404, `missing hashed asset returned ${missingAsset.status}`);
+  assert(
+    !missingAsset.headers.has("set-cookie") && !missingAsset.headers.has("content-security-policy"),
+    "missing hashed asset fell through to the application",
+  );
 
   const missingResponse = await fetchBoundary(`${origin}/__runtime_boundary_missing_document__`);
   const missingHtml = await missingResponse.text();
@@ -107,6 +140,7 @@ async function runAssertions(origin) {
   const realtimeResponse = await fetchBoundary(`${origin}/realtime/socket`);
   const realtimeBody = await realtimeResponse.text();
   assert(realtimeResponse.status === 426, `non-upgrade realtime request returned ${realtimeResponse.status}`);
+  assert(!realtimeResponse.headers.has("set-cookie"), "realtime capability route unexpectedly ran session setup");
   assert(
     realtimeBody === "WebSocket upgrade required.",
     "realtime capability route did not return the expected upgrade-required response",
@@ -120,15 +154,13 @@ async function runAssertions(origin) {
   });
   const ready = JSON.parse(String(message));
   assert(ready.type === "ready" && ready.route === "/realtime/socket", "WebSocket capability sent an unexpected message");
-  socket.close();
-  const upgradeStatus = await new Promise((resolveStatus, rejectStatus) => {
-    const address = new URL(origin);
-    const connection = createConnection({ host: address.hostname, port: Number(address.port) });
-    connection.setTimeout(5_000, () => connection.destroy(new Error("unknown WebSocket route timed out")));
-    connection.on("connect", () => connection.write(`GET /__unknown_websocket__ HTTP/1.1\r\nHost: ${address.host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n`));
-    connection.once("data", (data) => { connection.destroy(); resolveStatus(data.toString().split("\r\n")[0]); });
-    connection.once("error", rejectStatus);
+  assert(ready.transport === "websocket" && ready.note?.startsWith("Template endpoint only. Use Durable Objects"), "WebSocket capability lost its template-only notice");
+  const closed = await new Promise((resolveClose, rejectClose) => {
+    const timer = setTimeout(() => rejectClose(new Error("WebSocket capability did not close")), 5_000);
+    socket.onclose = (event) => { clearTimeout(timer); resolveClose(event); };
   });
+  assert(closed.code === 1000, `WebSocket capability closed with ${closed.code}`);
+  const upgradeStatus = (await rawHead(origin, "GET /__unknown_websocket__ HTTP/1.1", ["Upgrade: websocket", "Connection: Upgrade", "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==", "Sec-WebSocket-Version: 13"])).split("\r\n")[0];
   assert(/^HTTP\/1\.1 404\b/.test(upgradeStatus), `unknown WebSocket route returned ${upgradeStatus}`);
 
   const rejectedApiResponse = await fetchBoundary(`${origin}/api/__runtime_boundary__`, {
@@ -150,9 +182,11 @@ async function runAssertions(origin) {
 }
 
 async function main() {
+  if (!pagesMode) await testHandlerProbe(root, documentPath, { site: paths.site, referenceSite });
   await withLocalPreview({ root, pages: pagesMode, migrate: referenceSite, readyPath: documentPath }, async (origin, store) => {
     await runAssertions(origin);
     await testBodyLimit(origin, { referenceSite });
+    if (referenceSite) await testLegacyAlias(origin, { site: paths.site, outputName: leptos["output-name"] });
     if (referenceSite) {
       await testResourceExplorer(origin);
       await testContactIntake(origin, store);

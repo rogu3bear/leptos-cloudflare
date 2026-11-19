@@ -18,7 +18,7 @@ bun ./scripts/test-acceptance.mjs
 bun ./scripts/test-asset-fingerprints.mjs
 bun ./scripts/test-hydration-history.mjs
 bun ./scripts/test-pages-package.mjs
-bun ./scripts/test-dispatch.mjs
+bun ./scripts/test-worker-entry.mjs
 bun ./scripts/test-pattern-links.mjs
 bun ./scripts/test-file-limits.mjs
 bun ./scripts/test-pages-production.mjs

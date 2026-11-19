@@ -51,8 +51,11 @@ checks while retaining runtime checks. See [adoption](docs/adopting.md).
 ## Choose a deployment target
 
 Workers is the default. `wrangler.toml` combines generated `build/_worker.js`
-with static assets in `target/site`. Exact assets may be served before the Worker;
-other requests reach Leptos SSR or server functions.
+with static assets in `target/site`. That entry only re-exports the
+[workers-rs](https://github.com/cloudflare/workers-rs) module and its routing
+data: the Rust `fetch` handler in `src/lib.rs` is the first code to see a request.
+Exact assets may be served before the Worker; other requests reach Leptos SSR or
+server functions.
 
 Pages uses the same application through advanced mode, isolated configuration
 and a separately packaged module graph. To try it after the edge build:
@@ -127,8 +130,8 @@ Adding hosted workflows requires an explicit operator decision.
 src/app.rs           Leptos routes
 src/components/      application UI
 src/api.rs           typed server functions
-src/server/          request security, session-scoped D1 and SSR
-runtime/             shared asset/request dispatch
+src/edge/            Worker entry: request routing, security and SSR
+src/server/          session-scoped D1 behind server functions
 style/               CSS
 assets/              public icons and manifest
 migrations/          append-only schema

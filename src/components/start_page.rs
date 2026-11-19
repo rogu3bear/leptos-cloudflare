@@ -37,7 +37,7 @@ pub fn StartPage() -> impl IntoView {
                 </article>
                 <article class="command-step">
                     <span class="command-step__number">"04"</span>
-                    <div><h2>"Build the deployment shape"</h2><p>"Compile hydration, SSR, hashed assets, and the generated Worker shim together."</p><code>"bash ./scripts/build-edge.sh"</code></div>
+                    <div><h2>"Build the deployment shape"</h2><p>"Compile hydration, SSR, hashed assets, and the generated Worker entry together."</p><code>"bash ./scripts/build-edge.sh"</code></div>
                 </article>
                 <article class="command-step">
                     <span class="command-step__number">"05"</span>

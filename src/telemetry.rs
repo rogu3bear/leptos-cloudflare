@@ -71,8 +71,9 @@ struct CompletionEvent {
 }
 
 /// One low-cardinality completion observation for the request that reaches
-/// Leptos. Static assets and the template WebSocket lane terminate in the
-/// generated JavaScript shim and therefore never enter this contract.
+/// Leptos. Static assets, the template WebSocket lane and denied private
+/// modules are answered by the Worker entry before this boundary and therefore
+/// never enter this contract.
 pub struct RequestObservation {
     boundary: RequestBoundary,
     route_family: Option<RouteFamily>,
@@ -91,6 +92,16 @@ impl RequestObservation {
             server_function,
             method: classify_method(method),
             started_at_ms: now_millis(),
+        }
+    }
+
+    /// The closed boundary label, shared by the completion event and the
+    /// trace span around the same request.
+    #[must_use]
+    pub const fn boundary_label(&self) -> &'static str {
+        match self.boundary {
+            RequestBoundary::Ssr => "ssr",
+            RequestBoundary::ServerFunction => "server_function",
         }
     }
 

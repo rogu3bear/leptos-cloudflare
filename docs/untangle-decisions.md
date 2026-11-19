@@ -2,7 +2,7 @@
 
 | Responsibility | Owner | Preserved contract |
 |---|---|---|
-| Shared request/asset dispatch | `runtime/dispatch.mjs` | Workers and Pages use one executable dispatch implementation with explicit deployment options |
+| Shared request/asset routing | `src/edge/entry.rs`, `src/edge/route.rs` | Workers and Pages run one Rust routing implementation as the first request handler; deployment differences are data in the generated entry |
 | Tool versions and local CLI | `scripts/toolchain.sh`, `scripts/wrangler.sh`, lockfiles | Pinned Wrangler, lockfile-matched wasm-bindgen and genuine inherited resource descriptors |
 | Request security and SSR | `src/edge/` | Body/origin guards, CSP, session scope and SSR behavior |
 | D1 access | `src/server/d1.rs` and domain modules | Database and session obtained together; prepared statements remain domain-owned |

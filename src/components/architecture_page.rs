@@ -120,7 +120,7 @@ pub fn ArchitecturePage() -> impl IntoView {
                 <ol class="request-flow" aria-label="Cloudflare request routing flow">
                     <li><span>"01"</span><div><strong>"Browser request"</strong><p>"A document, identity file, hashed `/pkg/` artifact, API call, or realtime upgrade reaches Cloudflare."</p></div></li>
                     <li><span>"02"</span><div><strong>"Exact asset match?"</strong><p>"Yes: Workers Static Assets responds without invoking user Worker code. No: the request continues to the Worker entrypoint."</p></div></li>
-                    <li><span>"03"</span><div><strong>"Worker entrypoint"</strong><p>"The generated shim owns `/realtime/socket`; its explicit asset delegation is a safe fallback if it receives an asset path."</p></div></li>
+                    <li><span>"03"</span><div><strong>"Worker entrypoint"</strong><p>"The Rust entry owns `/realtime/socket`; its explicit asset delegation is a safe fallback if it receives an asset path."</p></div></li>
                     <li><span>"04"</span><div><strong>"Leptos SSR"</strong><p>"Every remaining route reaches Axum + Leptos for pages, typed server functions, status handling, and security headers."</p></div></li>
                     <li><span>"05"</span><div><strong>"Hydration"</strong><p>"The returned HTML loads hashed client assets, then browser WASM resumes the server-rendered DOM."</p></div></li>
                 </ol>
@@ -129,7 +129,7 @@ pub fn ArchitecturePage() -> impl IntoView {
             <section class="ownership-ledger" aria-label="Request ownership ledger">
                 <article><span>"01 · Browser"</span><h2>"Initiates"</h2><p>"Navigates, submits intent, receives HTML, then runs the hydration bundle."</p><strong>"Owner: user agent"</strong></article>
                 <article><span>"02 · Asset router"</span><h2>"Branches"</h2><p>"Serves exact static matches before user code and sends non-assets to the Worker."</p><strong>"Owner: Workers Static Assets"</strong></article>
-                <article><span>"03 · Worker shim"</span><h2>"Dispatches"</h2><p>"Handles the WebSocket lane, preserves explicit asset delegation, then falls through to SSR."</p><strong>"Owner: generated Worker entrypoint"</strong></article>
+                <article><span>"03 · Worker entry"</span><h2>"Dispatches"</h2><p>"Handles the WebSocket lane, preserves explicit asset delegation, then falls through to SSR."</p><strong>"Owner: workers-rs fetch handler"</strong></article>
                 <article><span>"04 · Axum + Leptos"</span><h2>"Renders"</h2><p>"Matches routes, supplies app context, runs server functions, and streams useful HTML."</p><strong>"Owner: Rust SSR bundle"</strong></article>
                 <article><span>"05 · D1"</span><h2>"Persists"</h2><p>"D1 owns session-scoped records and is available only through the Worker binding."</p><strong>"Owner: Cloudflare binding"</strong></article>
                 <article><span>"06 · Hydration"</span><h2>"Resumes"</h2><p>"The client WASM binds events to server-rendered markup without replacing the application model."</p><strong>"Owner: browser bundle"</strong></article>

@@ -30,7 +30,7 @@ fi
 cargo metadata --format-version 1 > /dev/null
 bun ./scripts/build-provenance.mjs start
 bun ./scripts/hydration-history.mjs capture-previous
-./scripts/with-wasm-bindgen-cli.sh cargo leptos build --release
+./scripts/with-wasm-bindgen-cli.sh cargo leptos build --release --frontend-only
 bun ./scripts/hash-assets.mjs
 bun ./scripts/hydration-history.mjs publish-assets
 source "$ROOT_DIR/target/asset-hashes.env"

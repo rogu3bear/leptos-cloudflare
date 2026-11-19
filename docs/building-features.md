@@ -89,7 +89,7 @@ The template demonstrates this live at `/lab/:id` (see `TodoDetailPage` + the `G
 
 **Critical for Cloudflare Workers + Leptos edge:**
 
-Keep the `WildcardSegment("any")` catch-all **last**. Combined with the generated `build/_worker.js` shim, this guarantees that known deep links receive their full server-rendered document and unknown document routes receive the useful server-rendered recovery page with an HTTP `404` status instead of a bare platform response.
+Keep the `WildcardSegment("any")` catch-all **last**. Combined with the Worker entry's routing in `src/edge/route.rs`, this guarantees that known deep links receive their full server-rendered document and unknown document routes receive the useful server-rendered recovery page with an HTTP `404` status instead of a bare platform response.
 
 Use `<A href=...>` (from `leptos_router::components`) for internal links. After hydration it enables fast client-side navigation; before hydration or on hard refresh it falls back to normal document requests (which the catch-all + SSR path handles correctly).
 
@@ -111,7 +111,7 @@ Server functions are the only communication channel between the WASM client and 
 
 The Worker rejects cross-origin `/api/*` POSTs before Leptos dispatch. If you add browser-submitted server functions, keep them same-origin and use normal Leptos client calls or same-origin forms.
 
-Realtime features are not Leptos server functions. WebSocket upgrades reach the generated Worker shim before the Rust router, so shared realtime state should start from `docs/realtime.md` and `patterns/realtime-durable-object/`, not from a Leptos component or `src/server/` module.
+Realtime features are not Leptos server functions. WebSocket upgrades are answered by the Worker entry (`src/edge/realtime.rs`) before the Leptos router, so shared realtime state should start from `docs/realtime.md` and `patterns/realtime-durable-object/`, not from a Leptos component or `src/server/` module.
 
 ### 2a. Keep the shared contract in its domain
 
@@ -517,7 +517,7 @@ The `secret()` call fails if the binding is not defined — validate during star
 cargo check --features ssr
 ```
 
-Run this first. It catches the majority of errors — missing imports, wrong types in server functions, broken `use_context` calls. The `hydrate` target is checked implicitly by `cargo leptos build`.
+Run this first. It catches the majority of errors — missing imports, wrong types in server functions, broken `use_context` calls. The full edge build also checks the `hydrate` target.
 
 ### Full build
 
@@ -551,7 +551,8 @@ New tables must exist locally before `wrangler dev` can exercise any queries aga
 ./scripts/wrangler.sh dev
 ```
 
-Hot-reloads on Worker changes. Does not hot-reload WASM — rebuild with `cargo leptos build` if you change component logic.
+Wrangler reloads on Worker file changes. After changing Rust component logic,
+run `bash ./scripts/build-edge.sh` to rebuild both WASM bundles.
 
 
 Both deployment targets share the application and D1 code. For Pages, package the completed edge build and use the separate Pages config; see [the Pages option](edge-deployment.md#pages-option) and [production preparation](pages-production.md). Test affected behavior on both targets before claiming release readiness.

@@ -21,7 +21,7 @@ export async function inventory(root, paths) {
 }
 
 export async function sourceSnapshot(root) {
-  const paths = ["Cargo.toml", "Cargo.lock", ".cargo", ".cfctl/operations/d1-migrations.toml", "migrations", "package.json", "bun.lock", "src", "runtime", "scripts", "style", "assets", "wrangler.toml", "pages/wrangler.toml", "pages/package.json"];
+  const paths = ["Cargo.toml", "Cargo.lock", ".cargo", ".cfctl/operations/d1-migrations.toml", "migrations", "package.json", "bun.lock", "src", "scripts", "style", "assets", "wrangler.toml", "pages/wrangler.toml", "pages/package.json"];
   for (const optional of ["build.rs", "rust-toolchain", "rust-toolchain.toml"]) {
     try { await lstat(join(root, optional)); paths.push(optional); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -44,7 +44,7 @@ export async function sourceSnapshot(root) {
 export async function validateBuild(root) {
   const receipt = JSON.parse(await readFile(join(root, "build/provenance.json"), "utf8"));
   if (JSON.stringify(receipt.source) !== JSON.stringify(await sourceSnapshot(root))) throw new Error("Build source changed; rebuild the edge artifacts");
-  const artifacts = await inventory(root, ["build/_worker.js", "build/index.js", "build/index_bg.wasm", "build/dispatch.mjs", "target/site"]);
+  const artifacts = await inventory(root, ["build/_worker.js", "build/index.js", "build/index_bg.wasm", "target/site"]);
   if (JSON.stringify(receipt.artifacts) !== JSON.stringify(artifacts)) throw new Error("Build artifacts changed; rebuild the edge artifacts");
   return receipt;
 }
@@ -64,7 +64,7 @@ if (import.meta.main) {
       const changed = source.files.filter((file) => old.get(file.path) !== file.sha256).map((file) => file.path);
       throw new Error(`Source changed during edge build (${changed.join(", ") || "Git identity or file modes"}); rebuild before release`);
     }
-    const artifacts = await inventory(root, ["build/_worker.js", "build/index.js", "build/index_bg.wasm", "build/dispatch.mjs", "target/site"]);
+    const artifacts = await inventory(root, ["build/_worker.js", "build/index.js", "build/index_bg.wasm", "target/site"]);
     await writeFile(join(root, "build/provenance.json"), JSON.stringify({ schema: 1, source, artifacts }, null, 2) + "\n");
   } else throw new Error("Usage: bun scripts/build-provenance.mjs start|finish");
 }

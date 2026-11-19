@@ -38,7 +38,7 @@ operator rules. That optional file is absent from the public template.
 |---|---|
 | Routes and UI | `src/app.rs`, `src/components/`, `style/main.css` |
 | Typed server functions and validation | `src/api.rs`, domain types, `src/server/` |
-| Worker/SSR and request security | `src/lib.rs`, `src/server/`, `runtime/dispatch.mjs` |
+| Worker entry, request routing, SSR and request security | `src/lib.rs`, `src/edge/`, `src/server/` |
 | Generated Worker and asset manifest | `scripts/build-edge.sh`, `scripts/write-worker-shim.mjs`, `scripts/hash-assets.mjs` |
 | Workers contract | `wrangler.toml`: keep `main = "build/_worker.js"`, Assets in `target/site` through `env.ASSETS` |
 | Pages contract | `pages/wrangler.toml`, `scripts/package-pages.mjs`, `scripts/prepare-pages-release.mjs` |

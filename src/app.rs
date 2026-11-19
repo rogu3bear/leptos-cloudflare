@@ -57,7 +57,7 @@ pub fn App() -> impl IntoView {
                     // Critical for Cloudflare + Leptos on the edge:
                     // This must be last. It ensures deep links and pre-hydration
                     // requests get a full SSR HTML shell (in cooperation with
-                    // the generated `build/_worker.js`).
+                    // the Worker entry in `src/edge/`).
                     <Route path=WildcardSegment("any") view=NotFoundPage ssr=SsrMode::OutOfOrder/>
                 </Routes>
             </AppLayout>

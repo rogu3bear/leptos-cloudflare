@@ -3,6 +3,9 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { hydrationAliases } from "./hydration-routes.mjs";
+import { projectMetadata } from "./project-metadata.mjs";
+import { workerEntry } from "./worker-entry.mjs";
 
 const root = process.cwd();
 const expectedCompatibilityDate = process.env.EXPECTED_COMPATIBILITY_DATE ?? "2026-08-10";
@@ -30,38 +33,21 @@ requireSnippet("wrangler.toml", wrangler, "head_sampling_rate = 0.1");
 requireSnippet("wrangler.toml", wrangler, "head_sampling_rate = 0.01");
 
 if (!existsSync(shimPath)) {
-  throw new Error(`missing generated Worker shim: ${shimPath}`);
+  throw new Error(`missing generated Worker entry: ${shimPath}`);
 }
 
+// The entry must be exactly what the generator emits for this build: routing
+// data plus a re-export of the workers-rs module, with no request handling of
+// its own. Routing behaviour is proven by the Rust unit tests and by the local
+// runtime boundary tests, not by the spelling of generated source.
+const { assetPrefix, paths, leptos } = await projectMetadata(root);
 const entry = await readFile(shimPath, "utf8");
-requireSnippet("build/_worker.js", entry, 'import { withDispatch } from "./dispatch.mjs";');
-requireSnippet("build/_worker.js", entry, 'withDispatch(LeptosWorker');
-const shim = entry + await readFile(join(root, "build/dispatch.mjs"), "utf8");
-requireSnippet("build/_worker.js", shim, 'import LeptosWorker from "./index.js";');
-requireSnippet("build/_worker.js", shim, "return class extends LeptosWorker");
-requireSnippet("build/_worker.js", shim, 'const REALTIME_SOCKET_PATH = "/realtime/socket";');
-requireSnippet("build/_worker.js", shim, "function isWebSocketUpgrade(request)");
-requireSnippet("build/_worker.js", shim, "function handleRealtimeSocket()");
-requireSnippet("build/_worker.js", shim, "new WebSocketPair()");
-requireSnippet("build/_worker.js", shim, "Template endpoint only. Use Durable Objects");
-requireSnippet("build/_worker.js", shim, "status: 426");
-requireSnippet("build/_worker.js", shim, 'headers: { Upgrade: "websocket" }');
-requireSnippet("build/_worker.js", shim, 'assetPrefix');
-requireSnippet("build/_worker.js", shim, '"/asset-manifest.json"');
-requireSnippet("build/_worker.js", shim, '"/app-icon.svg"');
-requireSnippet("build/_worker.js", shim, '"/app-icon-192.png"');
-requireSnippet("build/_worker.js", shim, '"/app-icon-512.png"');
-requireSnippet("build/_worker.js", shim, '"/apple-touch-icon.png"');
-requireSnippet("build/_worker.js", shim, '"/site.webmanifest"');
-requireSnippet("build/_worker.js", shim, "this.env.ASSETS.fetch(request)");
-requireSnippet("build/_worker.js", shim, "function requestBoundary(pathname)");
-requireSnippet("build/_worker.js", shim, "if (!this.ctx.tracing?.enterSpan)");
-requireSnippet("build/_worker.js", shim, "this.ctx.tracing.enterSpan(");
-requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.telemetry.schema_version", 1)');
-requireSnippet("build/_worker.js", shim, 'span.setAttribute("app.boundary", boundary)');
-requireSnippet("build/_worker.js", shim, "super.fetch(leptosRequest)");
-requireSnippet("build/_worker.js", shim, 'let leptosRequest = url.pathname.startsWith("/api/") && request.body ? request.clone() : request;');
+const expected = workerEntry({ assetPrefix, aliases: await hydrationAliases(paths.site, leptos["output-name"]) });
+if (entry !== expected) {
+  throw new Error("build/_worker.js differs from the generated entry for this build; rerun bash ./scripts/build-edge.sh");
+}
+for (const module of ["build/index.js", "build/index_bg.wasm"]) {
+  if (!existsSync(join(root, module))) throw new Error(`missing workers-rs module: ${module}`);
+}
 
-requireSnippet("build/_worker.js", shim, "if (Object.hasOwn(aliases, url.pathname))");
-
-console.log("[verify-worker-runtime] Worker shim, compatibility date, sampled observability, low-cardinality SSR/server-function spans, Assets binding, WebSocket lane, and SSR fallback are aligned");
+console.log("[verify-worker-runtime] generated entry (routing data and workers-rs re-export only), compatibility date, sampled observability and Assets binding are aligned");

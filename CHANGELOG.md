@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Make the workers-rs `fetch` handler the first request handler on Workers and
+  Pages. Routing for the WebSocket lane, asset fallback, Pages private modules,
+  retained server-function URLs and the trace span moved from
+  `runtime/dispatch.mjs` into `src/edge/`. The generated `build/_worker.js` now
+  only re-exports the workers-rs module and publishes build-generated routing data.
+- Replace the JavaScript `handleRealtimeSocket` override with one Rust extension
+  point, `upgrade` in `src/edge/realtime.rs`, and a Rust Durable Object example.
+- Prove routing with Rust unit tests and local-runtime checks of the built
+  handler instead of matching generated JavaScript source.
+
 ## 0.1.9
 
 - Require the outgoing hydration bundle before qualifying upgrades and rollbacks.

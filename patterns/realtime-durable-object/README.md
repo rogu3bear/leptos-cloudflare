@@ -4,7 +4,7 @@
 
 ## Why This Matters on Cloudflare + Leptos
 
-- The generated `build/_worker.js` sees WebSocket upgrades before Leptos routing or hydration.
+- The Rust Worker entry (`src/edge/entry.rs`) sees WebSocket upgrades before Leptos routing or hydration.
 - Workers are request-scoped; shared connection state needs a coordination owner.
 - Durable Objects give one single-threaded coordination point per room, document, tenant, or other stable key.
 - Durable Object WebSocket hibernation keeps sockets connected without pinning the object in memory during idle periods.
@@ -13,10 +13,12 @@ The core template stays minimal by keeping `/realtime/socket` as a capability en
 
 ## Example Files
 
-- `worker-shim-with-durable-object.example.mjs` shows the generated Worker shim shape after adoption: `/realtime/socket` validates the upgrade, derives a room key, and forwards the original upgrade request to `env.REALTIME_ROOM.getByName(room).fetch(request)`.
+- `realtime.example.rs` is `src/edge/realtime.rs` after adoption. Its `upgrade` function authorizes the request, derives a room key, and forwards the original upgrade request to `env.durable_object("REALTIME_ROOM")?.get_by_name(&room)?.fetch_with_request(req)`. The same file defines the `RealtimeRoom` Durable Object with `#[durable_object]` from the `worker` crate.
 - `wrangler.durable-object.example.toml` shows the Durable Object binding and SQLite-backed migration block to add to `wrangler.toml`.
 
-Do not edit `build/_worker.js` directly. It is generated. The example composes `withDispatch` from `runtime/dispatch.mjs` and overrides only `handleRealtimeSocket`; it does not replace asset, API-stream or telemetry handling. When adopting it, make `scripts/write-worker-shim.mjs` copy the adopted example to `build/_worker.js` after copying the shared dispatch module. Keep its imports `./index.js` and `./dispatch.mjs`; do not import the generated entry into itself. The Durable Object class export and binding are then part of that adopted entry.
+`upgrade` in `src/edge/realtime.rs` is the one extension point: the Worker entry calls it for every WebSocket upgrade on `/realtime/socket` and for nothing else. To adopt the pattern, replace the contents of that file with the example and keep the function's signature. Routing, asset, API-body and telemetry handling in `src/edge/` stay as they are.
+
+Do not edit `build/_worker.js`. It is generated, handles no request, and re-exports everything the workers-rs module exports, so the `RealtimeRoom` class reaches Wrangler without a build-script change. The example is not compiled by the template's gates; compile it in the adopting application with `cargo check --features ssr`.
 
 ## Core Pattern
 
@@ -29,32 +31,35 @@ Keep `/realtime/socket` as the only public realtime route. The Worker should do 
 - derive a stable room/document/tenant key
 - call the Durable Object stub for that key
 
-```js
-const room = env.REALTIME_ROOM.getByName(realtimeRoomName(request));
-return room.fetch(request);
+```rust
+let room = room_name(&req)?;
+env.durable_object("REALTIME_ROOM")?
+    .get_by_name(&room)?
+    .fetch_with_request(req)
+    .await
 ```
 
 ### 2. Durable Object owns shared state
 
-The object accepts the server side of the `WebSocketPair` with `this.ctx.acceptWebSocket(server)`, then handles messages in `webSocketMessage`. Persist critical message or presence events before broadcasting.
+The object accepts the server side of the `WebSocketPair` with `state.accept_websocket_with_tags(&server, &[&room])`, then handles messages in `websocket_message`. Persist critical message or presence events before broadcasting.
 
-```js
-this.ctx.storage.sql.exec(
-  "INSERT INTO messages (id, text, sent_at) VALUES (?, ?, ?)",
-  payload.id,
-  payload.text,
-  payload.sentAt,
-);
+```rust
+let stored: StoredMessage = self.state.storage().sql().exec(
+    "INSERT INTO messages (id, text, sent_at) VALUES (lower(hex(randomblob(16))), ?, ?) RETURNING id",
+    vec![text.into(), sent_at.as_str().into()],
+)?.one()?;
 
-this.broadcast(payload);
+for socket in self.state.get_websockets_with_tag(&room) {
+    let _ = socket.send(&event);
+}
 ```
 
 ### 3. Shard by coordination atom
 
 Use one object per logical room or document:
 
-```js
-env.REALTIME_ROOM.getByName(`room:${roomName}`)
+```rust
+env.durable_object("REALTIME_ROOM")?.get_by_name(&format!("room:{room_name}"))?
 ```
 
 Do not send all realtime traffic to one global object. That creates an unnecessary bottleneck and makes authorization boundaries unclear.
@@ -77,7 +82,7 @@ The core template intentionally does not include this binding.
 
 ## Security and Production Notes
 
-- Replace the example `authorizeRealtimeRequest` placeholder before production use.
+- Replace the example `authorize` placeholder before production use.
 - Treat the room name as an authorization input, not just a routing input.
 - Keep message size limits small and explicit.
 - Persist important events before fanout; in-memory WebSocket sets can be rebuilt after hibernation, but in-memory business state is not durable.
@@ -89,10 +94,13 @@ The core template intentionally does not include this binding.
 After adopting the pattern into the core runtime, run:
 
 ```bash
+cargo test --features ssr
 bash ./scripts/build-edge.sh
-bun ./scripts/verify-worker-runtime.mjs
+bun ./scripts/test-worker-boundaries.mjs
 ./scripts/wrangler.sh deploy --dry-run
 ```
+
+The boundary test opens `/realtime/socket` against a local runtime. Its template assertions (a `ready` message followed by a normal close) describe the capability endpoint, so update them to the adopted room behavior in the same change.
 
 Before claiming the repository is release-ready, run the full gate:
 
@@ -100,4 +108,4 @@ Before claiming the repository is release-ready, run the full gate:
 ./scripts/verify.sh
 ```
 
-This example follows Cloudflare's Durable Object WebSocket hibernation API: the Worker routes the upgrade, and the Durable Object calls `ctx.acceptWebSocket(server)` and handles messages with `webSocketMessage`.
+This example follows Cloudflare's Durable Object WebSocket hibernation API: the Worker routes the upgrade, and the Durable Object accepts the server socket through its `State` and handles messages with `websocket_message`.

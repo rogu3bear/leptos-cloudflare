@@ -15,6 +15,12 @@ function routes(bytes) {
   return result;
 }
 
+// Server-function paths compiled into the active client, keyed by function name.
+export async function activeServerFunctions(site) {
+  const manifest = JSON.parse(await readFile(join(site, "asset-manifest.json")));
+  return routes(await readFile(join(site, manifest.wasm)));
+}
+
 export async function hydrationAliases(site, name) {
   const manifest = JSON.parse(await readFile(join(site, "asset-manifest.json")));
   const pattern = new RegExp(`^${name}\\.([0-9a-f]{16})\\.wasm$`);

@@ -38,7 +38,7 @@ directory and keep server modules private.
 | Typed server function | `src/api.rs`, delegating through `crate::server::run(...)` |
 | D1 operation | `src/server/todos.rs`, `src/server/contact.rs`; register new modules in `src/server/mod.rs` |
 | Request-scoped database and session | `src/server/state.rs`, `src/server/d1.rs` |
-| Worker/SSR security boundary | `src/lib.rs`, `src/edge/`, `runtime/dispatch.mjs` |
+| Worker entry, routing and SSR security boundary | `src/lib.rs`, `src/edge/` |
 | Styles | `style/main.css` |
 | Schema | A new append-only `migrations/NNNN_name.sql` |
 | Workers / Pages bindings | `wrangler.toml` / `pages/wrangler.toml`; keep tracked identities placeholders |

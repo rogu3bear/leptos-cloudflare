@@ -1,12 +1,23 @@
 #[cfg(feature = "ssr")]
 mod body;
 #[cfg(feature = "ssr")]
+mod entry;
+#[cfg(feature = "ssr")]
 mod headers;
 mod policy;
+#[cfg(feature = "ssr")]
+mod realtime;
+#[cfg(feature = "ssr")]
+mod route;
 #[cfg(feature = "ssr")]
 mod session;
 #[cfg(feature = "ssr")]
 mod shell;
+#[cfg(feature = "ssr")]
+mod span;
+
+#[cfg(feature = "ssr")]
+pub(crate) use self::entry::dispatch;
 
 #[cfg(feature = "ssr")]
 use self::{
@@ -15,8 +26,10 @@ use self::{
     session::request_identity,
 };
 
+/// Leptos SSR and server functions, behind the request-security boundary.
+/// Only `entry::dispatch` calls this, for requests routed to the application.
 #[cfg(feature = "ssr")]
-pub(crate) async fn handle(
+async fn handle(
     req: worker::HttpRequest,
     env: worker::Env,
 ) -> worker::Result<axum::http::Response<axum::body::Body>> {

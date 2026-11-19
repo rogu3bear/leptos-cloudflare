@@ -17,20 +17,11 @@ mod todos;
 #[cfg(feature = "ssr")]
 #[worker::event(fetch)]
 async fn fetch(
-    req: worker::HttpRequest,
+    req: worker::Request,
     env: worker::Env,
-    _ctx: worker::Context,
-) -> worker::Result<axum::http::Response<axum::body::Body>> {
-    let observation = telemetry::RequestObservation::start(req.uri().path(), req.method().as_str());
-    let result = edge::handle(req, env).await;
-    observation.finish(
-        result
-            .as_ref()
-            .ok()
-            .map(|response| response.status().as_u16()),
-        result.is_err(),
-    );
-    result
+    ctx: worker::Context,
+) -> worker::Result<worker::web_sys::Response> {
+    edge::dispatch(req, env, ctx).await
 }
 
 #[cfg(feature = "hydrate")]

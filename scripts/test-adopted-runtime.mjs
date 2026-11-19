@@ -18,7 +18,7 @@ if (process.argv.length > 2) {
   await mkdir(fixture, { mode: 0o700 });
 } else fixture = await mkdtemp(join(tmpdir(), "leptos-cf-adopted-runtime-"));
 try {
-  for (const file of ["Cargo.toml", "Cargo.lock", "file-limits.json", "package.json", "bun.lock", ".cargo", ".cfctl", "wrangler.toml", "pages", "runtime", "src", "scripts", "docs", "migrations", "style", "assets"]) {
+  for (const file of ["Cargo.toml", "Cargo.lock", "file-limits.json", "package.json", "bun.lock", ".cargo", ".cfctl", "wrangler.toml", "pages", "src", "scripts", "docs", "migrations", "style", "assets"]) {
     await cp(join(root, file), join(fixture, file), { recursive: true });
   }
   // Share only generated outputs/tool caches, never source or provider config.

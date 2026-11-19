@@ -80,8 +80,8 @@ if (import.meta.main) {
 
   const fixture = await mkdtemp(join(tmpdir(), "leptos-build-provenance-"));
   try {
-    for (const directory of [".cargo", ".cfctl/operations", "migrations", "src", "runtime", "scripts", "style", "assets", "build", "target/site", "pages"]) await mkdir(join(fixture, directory), { recursive: true });
-    for (const path of ["Cargo.toml", "Cargo.lock", ".cfctl/operations/d1-migrations.toml", "package.json", "bun.lock", "wrangler.toml", "pages/wrangler.toml", "pages/package.json", "src/app.rs", "build/_worker.js", "build/index.js", "build/index_bg.wasm", "build/dispatch.mjs", "target/site/logo.svg"]) await writeFile(join(fixture, path), "fixture");
+    for (const directory of [".cargo", ".cfctl/operations", "migrations", "src", "scripts", "style", "assets", "build", "target/site", "pages"]) await mkdir(join(fixture, directory), { recursive: true });
+    for (const path of ["Cargo.toml", "Cargo.lock", ".cfctl/operations/d1-migrations.toml", "package.json", "bun.lock", "wrangler.toml", "pages/wrangler.toml", "pages/package.json", "src/app.rs", "build/_worker.js", "build/index.js", "build/index_bg.wasm", "target/site/logo.svg"]) await writeFile(join(fixture, path), "fixture");
     const script = resolve("scripts/build-provenance.mjs");
     const run = (phase) => Bun.spawnSync([process.execPath, script, phase], { cwd: fixture, stdout: "pipe", stderr: "pipe" });
     assert.equal(run("start").exitCode, 0);

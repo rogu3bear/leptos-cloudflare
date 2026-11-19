@@ -59,8 +59,9 @@ async function stopWorker(child, lifecycle) {
   }
 }
 
-export async function withLocalPreview({ root = process.cwd(), pages = false, migrate = false, readyPath = "/", pagesReleaseDirectory = null }, use) {
+export async function withLocalPreview({ root = process.cwd(), pages = false, migrate = false, readyPath = "/", pagesReleaseDirectory = null, wrapEntry = null }, use) {
   assert(!pagesReleaseDirectory || pages, "a Pages release directory requires Pages mode");
+  assert(!wrapEntry || !pages, "a wrapped test entry requires Workers mode");
   const pagesMode = pages;
   const documentPath = readyPath;
   const { paths } = await projectMetadata(root);
@@ -87,10 +88,13 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
     await cp(resolve(root, "Cargo.toml"), join(packageRoot, "Cargo.toml"));
     await cp(assetDirectory, join(packageRoot, "target/site"), { recursive: true });
     await writeFile(join(packageRoot, "target/site/__adopter_boundary_logo.svg"), "adopter asset fixture", { flag: "wx" });
-    for (const file of ["_worker.js", "index.js", "index_bg.wasm", "dispatch.mjs"]) await cp(resolve(root, "build", file), join(packageRoot, "build", file));
+    for (const file of ["_worker.js", "index.js", "index_bg.wasm"]) await cp(resolve(root, "build", file), join(packageRoot, "build", file));
     const packaged = spawnSync("bun", [resolve(root, "scripts/package-pages.mjs"), pagesOutput], { cwd: packageRoot, encoding: "utf8" });
     if (packaged.status !== 0) throw new Error(`Pages packaging failed: ${packaged.stderr}`);
   }
+  // A wrapped entry lets a test observe the built Worker; it never ships.
+  const mainEntrypoint = wrapEntry ? join(testDirectory, "entry.mjs") : workerEntrypoint;
+  if (wrapEntry) await writeFile(mainEntrypoint, wrapEntry(workerEntrypoint), { flag: "wx" });
   const configPath = pagesReleaseDirectory ? join(pagesReleaseDirectory, "wrangler.toml") : join(testDirectory, pagesMode ? "wrangler.toml" : "wrangler.test.toml");
   const persistencePath = join(testDirectory, "state");
   const port = await reservePort();
@@ -98,7 +102,7 @@ export async function withLocalPreview({ root = process.cwd(), pages = false, mi
   const origin = `http://127.0.0.1:${port}`;
   const config = [
     'name = "leptos-cf-boundary-test"',
-    pagesMode ? `pages_build_output_dir = ${JSON.stringify(pagesOutput)}` : `main = ${JSON.stringify(workerEntrypoint)}`,
+    pagesMode ? `pages_build_output_dir = ${JSON.stringify(pagesOutput)}` : `main = ${JSON.stringify(mainEntrypoint)}`,
     'compatibility_date = "2026-08-10"',
     "",
     ...(pagesMode ? [] : ["[assets]", `directory = ${JSON.stringify(assetDirectory)}`, 'binding = "ASSETS"']),

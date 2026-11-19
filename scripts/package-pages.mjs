@@ -76,13 +76,12 @@ async function collectAssets(directory, prefix = "") {
 await collectAssets(site);
 const protectedShim = workerEntry({
   serverModule: "./functions/index.js",
-  runtimeModule: "./functions/dispatch.mjs",
   assetPrefix: project.assetPrefix,
   assetPaths: assets.sort(),
   blockServerModules: true,
   aliases: await hydrationAliases(site, project.leptos["output-name"]),
 });
-await Promise.all([access("build/index.js", constants.R_OK), access("build/index_bg.wasm", constants.R_OK), access("build/dispatch.mjs", constants.R_OK)]);
+await Promise.all([access("build/index.js", constants.R_OK), access("build/index_bg.wasm", constants.R_OK)]);
 await mkdir(destination, { recursive: true });
 if (await realpath(destination) !== actualDestination) throw new Error("Pages output path changed during preparation");
 if ((await readdir(destination)).length) throw new Error("Pages output directory must be empty");
@@ -94,6 +93,4 @@ await mkdir(workerDir);
 await writeFile(join(destination, "_worker.js"), protectedShim, { flag: "wx" });
 await cp("build/index.js", join(workerDir, "index.js"), { errorOnExist: true, force: false });
 await cp("build/index_bg.wasm", join(workerDir, "index_bg.wasm"), { errorOnExist: true, force: false });
-
-await cp("build/dispatch.mjs", join(workerDir, "dispatch.mjs"), { errorOnExist: true, force: false });
 console.log(`[package-pages] Pages advanced-mode output: ${destination}`);
