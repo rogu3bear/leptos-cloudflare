@@ -36,7 +36,19 @@ fn assets_leave_before_the_application() {
     let workers = workers();
     assert_eq!(get("/pkg/app.js", &workers), Route::Asset);
     assert_eq!(get("/pkg/", &workers), Route::Asset);
-    for path in STATIC_ASSET_PATHS {
+    // Spelled out here on purpose: removing an identity file from the routing
+    // list must fail a test, not silently send that file to the application.
+    let identity_files = [
+        "/asset-manifest.json",
+        "/app-icon.svg",
+        "/app-icon-192.png",
+        "/app-icon-512.png",
+        "/apple-touch-icon.png",
+        "/favicon.svg",
+        "/site.webmanifest",
+    ];
+    assert_eq!(STATIC_ASSET_PATHS, identity_files);
+    for path in identity_files {
         assert_eq!(get(path, &workers), Route::Asset, "{path}");
     }
     assert_eq!(get("/pkg", &workers), application(false));
@@ -212,6 +224,10 @@ fn the_manifest_is_a_closed_contract() {
         (
             "missing denial flag",
             r#"{"assetPrefix":"/pkg/","assetPaths":null,"aliases":{}}"#,
+        ),
+        (
+            "missing inventory",
+            r#"{"assetPrefix":"/pkg/","aliases":{},"blockServerModules":true}"#,
         ),
         (
             "unknown field",

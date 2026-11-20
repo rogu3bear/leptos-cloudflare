@@ -48,6 +48,26 @@ export default class extends Worker {
 `;
 }
 
+// Without routing data the handler must refuse every lane rather than guess:
+// the Pages private-module denial depends on that data being present.
+function withoutRoutingData(buildEntry) {
+  return `import Worker from ${JSON.stringify(buildEntry)};
+delete globalThis.${EDGE_MANIFEST_GLOBAL};
+export default Worker;
+`;
+}
+
+export async function testMissingRoutingData(root) {
+  await withLocalPreview({ root, wrapEntry: withoutRoutingData }, async (origin) => {
+    for (const path of ["/", "/pkg/__missing__.js", "/realtime/socket", "/api/__missing__", "/_server/index.js"]) {
+      const response = await fetchBoundary(`${origin}${path}`);
+      await response.arrayBuffer();
+      assert.equal(response.status, 500, `${path} was answered without routing data (${response.status})`);
+    }
+  });
+  console.log("[handler-probe] every lane fails closed when the generated routing data is absent");
+}
+
 const span = (boundary) => ({
   name: `leptos.${boundary}`,
   attributes: { "app.telemetry.schema_version": 1, "app.boundary": boundary },

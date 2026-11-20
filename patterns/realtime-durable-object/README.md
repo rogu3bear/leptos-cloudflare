@@ -100,7 +100,7 @@ bun ./scripts/test-worker-boundaries.mjs
 ./scripts/wrangler.sh deploy --dry-run
 ```
 
-The boundary test opens `/realtime/socket` against a local runtime. Its template assertions (a `ready` message followed by a normal close) describe the capability endpoint, so update them to the adopted room behavior in the same change.
+The boundary test opens `/realtime/socket` against a local runtime. Its template assertions (a `ready` message followed by a normal close) describe the capability endpoint, so update them to the adopted room behavior in the same change. The test writes its own Wrangler configuration in `scripts/local-preview.mjs` with only `ASSETS` and D1; add the `REALTIME_ROOM` binding and migration there too, or the adopted `upgrade` fails on both the Workers and Pages runs.
 
 Before claiming the repository is release-ready, run the full gate:
 

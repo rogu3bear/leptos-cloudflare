@@ -205,4 +205,10 @@ impl DurableObject for RealtimeRoom {
         // With this repository's compatibility date, Cloudflare replies to close frames itself.
         Ok(())
     }
+
+    async fn websocket_error(&self, _ws: WebSocket, _error: worker::Error) -> Result<()> {
+        // The attribute always exports this handler and the trait default panics,
+        // so a socket error must be answered explicitly. The socket is already gone.
+        Ok(())
+    }
 }

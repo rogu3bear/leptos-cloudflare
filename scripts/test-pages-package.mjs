@@ -35,6 +35,13 @@ try {
   for (const path of [join(fixture, "build/_worker.js"), join(output, "_worker.js")]) {
     assert((await readFile(path, "utf8")).includes('"/api/create_todo111":"/api/create_todo222"'));
   }
+  // The Pages entry must carry the private-module denial and the real asset inventory.
+  const workersEntry = await readFile(join(fixture, "build/_worker.js"), "utf8");
+  const pagesEntry = await readFile(join(output, "_worker.js"), "utf8");
+  assert(workersEntry.includes('"assetPaths":null') && workersEntry.includes('"blockServerModules":false'));
+  assert(pagesEntry.includes('"blockServerModules":true'), "Pages entry lost the private-module denial");
+  assert(pagesEntry.includes('"assetPaths":["/asset-manifest.json","/logo.svg","/pkg/app.js",'), "Pages entry lost its asset inventory");
+  assert(pagesEntry.includes('from "./functions/index.js"'));
   assert.equal(await readFile(join(output, "functions/index_bg.wasm"), "utf8"), "wasm fixture");
   assert.equal(await readFile(join(output, "pkg/app.js"), "utf8"), "asset fixture");
   assert.equal(await readFile(join(output, "logo.svg"), "utf8"), "adopter logo");

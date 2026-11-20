@@ -44,8 +44,13 @@ try {
     assert.match(html, /<h1(?:\s[^>]*)?>[\s\S]*?[^\s<>][\s\S]*?<\/h1>/);
     if (referenceSite) assert.match(html, /SSR \+ hydration/);
     assert.match(response.headers.get("content-security-policy"), /nonce-/);
-    assert.equal((await fetchBoundary(`${origin}/_server/index_bg.wasm`)).status, 404);
-    for (const path of ["/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) assert.equal((await fetchBoundary(`${origin}${path}`)).status, 404);
+    for (const path of ["/_server/index_bg.wasm", "/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) {
+      const denied = await fetchBoundary(`${origin}${path}`);
+      assert.equal(denied.status, 404);
+      // A 404 from SSR or ASSETS would look the same by status alone.
+      assert.equal(await denied.text(), "Not found.", `${path} was not answered by the private-module denial`);
+      assert.equal(denied.headers.has("set-cookie"), false);
+    }
     await testBodyLimit(origin, { referenceSite });
     if (referenceSite) {
       await testResourceExplorer(origin);

@@ -30,6 +30,8 @@ pub(super) struct EdgeManifest {
     asset_prefix: String,
     /// Exact asset inventory. Pages sends every request to the Worker, so it
     /// needs the list; Workers Static Assets answers matches before the Worker.
+    /// The key is required: `null` means "no inventory", absence is an error.
+    #[serde(deserialize_with = "Option::deserialize")]
     asset_paths: Option<HashSet<String>>,
     /// Server-function URLs of retained clients, mapped to the active ones.
     aliases: HashMap<String, String>,

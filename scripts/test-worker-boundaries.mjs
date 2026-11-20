@@ -7,7 +7,7 @@ import { testBodyLimit } from "./test-body-limit.mjs";
 import { testTodoAdmission } from "./test-todo-admission.mjs";
 import { testContactIntake } from "./test-contact-intake.mjs";
 import { testLegacyAlias } from "./test-legacy-alias.mjs";
-import { testHandlerProbe } from "./test-handler-probe.mjs";
+import { testHandlerProbe, testMissingRoutingData } from "./test-handler-probe.mjs";
 import { projectMetadata } from "./project-metadata.mjs";
 
 const root = process.cwd();
@@ -129,6 +129,8 @@ async function runAssertions(origin) {
     for (const path of ["/_server/index.js", "/_server/index_bg.wasm", "/functions/index.js", "/functions/index_bg.wasm", "/pkg/%2f..%2f_server/index_bg.wasm", "/pkg/%2f..%2ffunctions/index_bg.wasm"]) {
       const response = await fetchBoundary(`${origin}${path}`);
       assert(response.status === 404, `Pages server module ${path} returned ${response.status}`);
+      // A 404 from SSR or ASSETS would look the same by status alone.
+      assert(await response.text() === "Not found." && !response.headers.has("set-cookie") && !response.headers.has("content-security-policy"), `Pages server module ${path} was not answered by the private-module denial`);
     }
   }
 
@@ -182,7 +184,10 @@ async function runAssertions(origin) {
 }
 
 async function main() {
-  if (!pagesMode) await testHandlerProbe(root, documentPath, { site: paths.site, referenceSite });
+  if (!pagesMode) {
+    await testHandlerProbe(root, documentPath, { site: paths.site, referenceSite });
+    await testMissingRoutingData(root);
+  }
   await withLocalPreview({ root, pages: pagesMode, migrate: referenceSite, readyPath: documentPath }, async (origin, store) => {
     await runAssertions(origin);
     await testBodyLimit(origin, { referenceSite });

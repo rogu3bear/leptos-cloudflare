@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.10
 
 - Make the workers-rs `fetch` handler the first request handler on Workers and
   Pages. Routing for the WebSocket lane, asset fallback, Pages private modules,
@@ -11,6 +11,8 @@
   point, `upgrade` in `src/edge/realtime.rs`, and a Rust Durable Object example.
 - Prove routing with Rust unit tests and local-runtime checks of the built
   handler instead of matching generated JavaScript source.
+- Skip the unused native release executable in the edge build
+  (`cargo leptos build --frontend-only`).
 
 ## 0.1.9
 
